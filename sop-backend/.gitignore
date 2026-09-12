@@ -1,0 +1,21 @@
+# 가상환경
+.venv/
+venv/
+
+# 파이썬이 자동으로 만드는 캐시 파일
+__pycache__/
+*.pyc
+
+# 비밀번호가 들어가는 환경변수 파일 (견본 .env.example 만 올립니다)
+.env
+
+# 로컬 PostgreSQL 데이터 폴더 (docker 볼륨 대신 폴더를 쓸 때)
+pgdata/
+
+# 테스트 도구 캐시
+.pytest_cache/
+
+# 패키지 빌드 결과물
+*.egg-info/
+build/
+dist/

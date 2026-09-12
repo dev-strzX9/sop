@@ -1,0 +1,72 @@
+# ---------------------------------------------------------------------
+# docker-compose.yml — "DB + API 서버" 두 상자를 한 번에 켜는 설명서 (내 PC 에서 통째로 시험할 때)
+#
+#   실행:  docker compose up          (처음엔 이미지를 만드느라 몇 분 걸립니다)
+#   종료:  Ctrl+C  또는  docker compose down
+#   DB 데이터까지 지우고 처음부터:  docker compose down -v
+#
+# 켜지면 브라우저에서 http://localhost:8000 을 엽니다.
+#
+# 회사 환경(HCP 컨테이너 + 이미 있는 외부 PostgreSQL 17)에서는 이 파일의 db 상자를 쓰지 않고
+# api 상자만 올리면서 DATABASE_URL(또는 PGHOST 등) 환경변수로 회사 DB 를 가리키면 됩니다.
+# 표 만들기/갱신은 그 환경에서 한 번:  python -m app.tools.apply_schema
+# ---------------------------------------------------------------------
+services:
+
+  # 1) PostgreSQL 데이터베이스 (회사 DB 와 같은 17 버전)
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: sop            # 만들어 둘 데이터베이스 이름
+      POSTGRES_USER: postgres     # 접속 계정
+      POSTGRES_PASSWORD: postgres # 접속 비밀번호 (개발용. 실서버는 꼭 바꾸세요)
+    volumes:
+      # 데이터 파일을 상자 밖(도커 볼륨 pgdata)에 두어 상자를 껐다 켜도 남게 합니다.
+      - pgdata:/var/lib/postgresql/data
+      # 이 폴더의 .sql 파일은 DB 가 "처음" 만들어질 때 자동으로 실행됩니다 → 표가 저절로 생깁니다.
+      # (이미 만들어진 DB 에는 다시 실행되지 않습니다. 표 모양이 바뀌었으면
+      #  docker compose run --rm api python -m app.tools.apply_schema  로 마이그레이션을 적용하세요)
+      - ./sql/sop_schema.sql:/docker-entrypoint-initdb.d/01_sop_schema.sql:ro
+    healthcheck:
+      # "DB 가 접속을 받을 준비가 됐는지" 5초마다 확인. api 는 이게 성공해야 켜집니다.
+      test: ["CMD-SHELL", "pg_isready -U postgres -d sop"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5432:5432"   # 내 PC 에서 psql 로 직접 들여다보고 싶을 때 사용 (필요 없으면 지워도 됨)
+
+  # 2) FastAPI 서버
+  api:
+    build: .          # 같은 폴더의 Dockerfile 로 이미지를 만듭니다
+    ports:
+      - "8000:8000"   # 내 PC 의 8000 번 포트 → 상자 안의 PORT(8000) 번 포트
+    environment:
+      # 상자끼리는 서비스 이름(db)이 곧 주소입니다.
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/sop
+      PORT: "8000"                 # 서버 포트 (Dockerfile 의 CMD 가 읽음)
+      DB_SESSION_OPTIONS: "-c timezone=UTC"   # PgBouncer 뒤라면 "" 로
+      DB_PREPARE_THRESHOLD: "5"    # PgBouncer(트랜잭션 풀링) 뒤라면 "0" 으로
+      DB_CONNECT_TIMEOUT: "30"
+      DB_POOL_MIN: "2"
+      DB_POOL_MAX: "10"
+      ROOT_PATH: ""                # "/sop" 처럼 접두어 뒤에서 돌 때만
+      USER_HEADER: X-User          # SSO 프록시가 넣어 주는 사용자 헤더 이름
+      LOG_LEVEL: INFO
+      STATIC_DIR: static
+      STATIC_INDEX: SOP_STUDIO.html
+      MAX_CONTENT_MB: "20"
+    depends_on:
+      db:
+        condition: service_healthy   # DB healthcheck 가 통과한 뒤에 켜집니다
+    healthcheck:
+      # Dockerfile 의 HEALTHCHECK 와 같은 확인 (DB 를 보지 않는 /health). 포트는 위 PORT 값을 그대로 읽습니다
+      # (8000 을 고정으로 적으면 PORT 를 바꿨을 때 항상 unhealthy 가 됩니다)
+      test: ["CMD", "python", "-c", "import os,urllib.request; urllib.request.urlopen('http://127.0.0.1:' + os.environ.get('PORT','8000') + '/health', timeout=4)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  pgdata:   # DB 데이터가 저장되는 도커 볼륨

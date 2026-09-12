@@ -1,0 +1,3725 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ETCH SOP FLOW JSON EDITOR</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    :root {
+      --header-height: 60px;
+      --sidebar-width: 190px;
+      --panel-width: 390px;
+      --border: #d4d5d8;
+      --text: #1b1c1d;
+      --muted: #70747b;
+      --primary: #df4b31;
+      --danger: #dc2626;
+      --surface: #ffffff;
+      --background: #f4f4f5;
+    }
+
+    body {
+      height: 100vh;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      font-family: Arial, "Noto Sans KR", sans-serif;
+      color: var(--text);
+      background: var(--background);
+    }
+
+    header {
+      height: var(--header-height);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      color: #fff;
+      background: #292a2d;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .sop-info-panel {
+      flex: 0 0 auto;
+      padding: 12px 18px 14px;
+      border-bottom: 1px solid var(--border);
+      background: #ffffff;
+      box-shadow: 0 2px 8px rgba(17, 24, 39, 0.05);
+    }
+
+    .sop-info-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .sop-info-title-wrap {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .sop-info-title {
+      margin: 0;
+      font-size: 15px;
+      white-space: nowrap;
+    }
+
+    .sop-info-summary {
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 12px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .sop-info-toggle {
+      flex: 0 0 auto;
+      padding: 6px 9px;
+      border: 1px solid #d4d5d8;
+      color: #414347;
+      background: #fafafa;
+      font-size: 12px;
+    }
+
+    .sop-info-grid {
+      display: grid;
+      grid-template-columns: minmax(220px, 0.8fr) minmax(320px, 1.7fr);
+      gap: 10px 14px;
+      align-items: start;
+    }
+
+    .sop-info-field label {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #414347;
+    }
+
+    .sop-info-field input,
+    .sop-info-field textarea {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #d4d5d8;
+      border-radius: 5px;
+      font: inherit;
+      font-size: 13px;
+      background: #fff;
+    }
+
+    .sop-info-field textarea {
+      min-height: 58px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+
+    .sop-info-description {
+      grid-column: 1 / -1;
+    }
+
+    .sop-info-panel.collapsed {
+      padding-top: 8px;
+      padding-bottom: 8px;
+    }
+
+    .sop-info-panel.collapsed .sop-info-header {
+      margin-bottom: 0;
+    }
+
+    .sop-info-panel.collapsed .sop-info-grid {
+      display: none;
+    }
+
+    .layout {
+      min-height: 0;
+      flex: 1 1 auto;
+      display: grid;
+      grid-template-columns: var(--sidebar-width) minmax(500px, 1fr) 7px var(--panel-width);
+    }
+
+    @media (max-width: 900px) {
+      .sop-info-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .sop-info-description {
+        grid-column: auto;
+      }
+    }
+
+    .sidebar,
+    .property-panel {
+      padding: 16px;
+      overflow-y: auto;
+      background: var(--surface);
+    }
+
+    .sidebar { border-right: 1px solid var(--border); }
+    .property-panel {
+      min-width: 0;
+      border-left: 1px solid var(--border);
+    }
+
+    .panel-resizer {
+      position: relative;
+      z-index: 20;
+      cursor: col-resize;
+      background: #e7e8e9;
+      transition: background 0.15s;
+    }
+
+    .panel-resizer::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 2px;
+      width: 3px;
+      height: 42px;
+      border-radius: 999px;
+      background: #a1a4aa;
+      transform: translateY(-50%);
+    }
+
+    .panel-resizer:hover,
+    .panel-resizer.dragging {
+      background: #dddee0;
+    }
+
+    body.resizing-panel {
+      cursor: col-resize;
+      user-select: none;
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 17px;
+    }
+
+    h3 {
+      margin: 16px 0 8px;
+      font-size: 14px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .sidebar button {
+      width: 100%;
+      margin-bottom: 8px;
+      padding: 10px;
+    }
+
+    .header-actions button,
+    .inline-button,
+    .small-button {
+      width: auto;
+      margin: 0;
+      padding: 8px 10px;
+    }
+
+    .node-button { background: #e7e8e9; }
+    .node-button:hover { background: #d4d5d8; }
+    .primary-button { color: #fff; background: var(--primary); }
+    .secondary-button { color: #fff; background: #53565b; }
+    .danger-button { color: #fff; background: var(--danger); }
+    .light-button { color: #414347; background: #e7e8e9; }
+
+    .help {
+      margin-top: 14px;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      line-height: 1.6;
+      color: #414347;
+      background: #f4f4f5;
+    }
+
+    #canvasViewport {
+      position: relative;
+      overflow: auto;
+      background: #e2e3e5;
+    }
+
+    .canvas-toolbar {
+      position: sticky;
+      top: 8px;
+      left: 8px;
+      z-index: 30;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      margin: 8px;
+      padding: 4px;
+      border: 1px solid #d4d5d8;
+      border-radius: 7px;
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+      backdrop-filter: blur(4px);
+    }
+
+    .canvas-toolbar button {
+      min-width: 30px;
+      height: 28px;
+      padding: 0 7px;
+      border: 1px solid #d4d5d8;
+      border-radius: 5px;
+      color: #414347;
+      background: #fff;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .canvas-toolbar button:hover {
+      background: #f7f7f7;
+      border-color: #f0aca0;
+    }
+
+    #zoomLabel {
+      min-width: 52px;
+      font-weight: 600;
+    }
+
+    /* 논리 캔버스 = 16:9 페이지 (1920x1080). 최종 페이지·PNG·PPT 슬라이드와 1:1 대응. */
+    #workspaceSizer {
+      position: relative;
+      width: 1920px;
+      height: 1080px;
+    }
+
+    #workspace {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 1920px;
+      height: 1080px;
+      transform-origin: 0 0;
+      will-change: transform;
+      background-color: #ffffff;
+      background-image:
+        linear-gradient(#e7e8e9 1px, transparent 1px),
+        linear-gradient(90deg, #e7e8e9 1px, transparent 1px);
+      background-size: 20px 20px;
+      /* 페이지 외곽 경계선 (inset이라 스케일이 바뀌어도 잘리지 않음) */
+      box-shadow: inset 0 0 0 2px #414347, 0 4px 18px rgba(15, 23, 42, 0.18);
+    }
+
+    #connectionLayer {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+      pointer-events: auto;
+      z-index: 1;
+    }
+
+    #workspace.grid-hidden {
+      background-image: none;
+    }
+
+    .edge-visible {
+      fill: none;
+      stroke: #414347;
+      stroke-width: 2.2;
+      stroke-linejoin: round;
+      stroke-linecap: round;
+      pointer-events: none;
+    }
+
+    .edge-visible.selected {
+      stroke: #df4b31;
+      stroke-width: 3;
+    }
+
+    .edge-hit {
+      fill: none;
+      stroke: transparent;
+      stroke-width: 14;
+      stroke-linejoin: round;
+      stroke-linecap: round;
+      pointer-events: stroke;
+      cursor: pointer;
+    }
+
+    .edge-route-handle {
+      fill: #ffffff;
+      stroke: #df4b31;
+      stroke-width: 2;
+      pointer-events: all;
+    }
+
+    .edge-route-handle.axis-x { cursor: ew-resize; }
+    .edge-route-handle.axis-y { cursor: ns-resize; }
+    .edge-route-handle.free { cursor: move; }
+
+    .flow-node {
+      position: absolute;
+      z-index: 2;
+      cursor: move;
+      user-select: none;
+    }
+
+    .node-shape {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid #111;
+      color: #111;
+      background: #fff;
+      text-align: center;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+    }
+
+    .flow-node.selected .node-shape {
+      outline: 4px solid rgba(37, 99, 235, 0.28);
+    }
+
+    .flow-node.start,
+    .flow-node.end {
+      width: 112px;
+      height: 112px;
+    }
+
+    .flow-node.start .node-shape,
+    .flow-node.end .node-shape {
+      border-radius: 50%;
+      padding: 13px;
+      font-size: 17px;
+      font-weight: 600;
+    }
+
+    .flow-node.seq {
+      width: 176px;
+      height: 131px;
+    }
+
+    .flow-node.seq .node-shape {
+      display: block;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    .seq-top {
+      height: 27px;
+      display: grid;
+      grid-template-columns: 46px 1fr;
+      border-bottom: 2px solid #111;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .seq-number,
+    .seq-role {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3px;
+      overflow: hidden;
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.2;
+    }
+
+    .seq-number { border-right: 2px solid #111; }
+
+    .seq-action {
+      height: 77px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 6px 8px;
+      border-bottom: 2px solid #111;
+      overflow: hidden;
+    }
+
+    .seq-action-title {
+      margin-bottom: 5px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #53565b;
+    }
+
+    .seq-action-text {
+      max-width: 100%;
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.35;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow: hidden;
+    }
+
+    .seq-execution {
+      height: 27px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1px;
+      padding: 2px 6px;
+      font-weight: 700;
+      line-height: 1.15;
+      overflow: hidden;
+    }
+
+    .seq-system-text,
+    .seq-manual-text,
+    .seq-execution-placeholder {
+      max-width: 100%;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow: hidden;
+      text-align: center;
+    }
+
+    .flow-node.decision {
+      width: 128px;
+      height: 128px;
+    }
+
+    .flow-node.decision .node-shape {
+      transform: rotate(45deg) scale(0.72);
+      border-radius: 3px;
+    }
+
+    .flow-node.decision .node-label {
+      width: 100px;
+      transform: rotate(-45deg) scale(1.38);
+      padding: 6px;
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.35;
+      word-break: keep-all;
+    }
+
+    .flow-node.sop {
+      width: 152px;
+      height: 96px;
+    }
+
+    .flow-node.sop .node-shape {
+      border-radius: 29px;
+      padding: 11px;
+      font-size: 17px;
+      font-weight: 700;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    /* SOP 상자 위에 작게 보이는 SOP 번호 (연결된 문서가 있으면 그 문서의 "현재" 번호) */
+    .flow-node.sop .node-sub {
+      font-size: 10px;
+      font-weight: 600;
+      color: #70747b;
+      max-width: 100%;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    /* 참조 상태별 상자 모양: 미작성(라이브러리에 없는 번호)·비어 있음 → 점선+회색, 폐기된 문서 → 점선+붉은색 */
+    .flow-node.sop.ref-missing .node-shape,
+    .flow-node.sop.ref-empty .node-shape {
+      border-style: dashed;
+      border-color: #9a9da3;
+      color: #70747b;
+    }
+    .flow-node.sop.ref-retired .node-shape {
+      border-style: dashed;
+      border-color: #dc2626;
+      color: #dc2626;
+    }
+
+    /* 속성창의 SOP 참조 상태 한 줄 + [열기] 버튼 */
+    .sop-ref-status {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+    .sop-ref-status.linked { color: #15803d; }
+    .sop-ref-status.retired { color: #dc2626; }
+    .sop-ref-status .small-button { flex: none; padding: 5px 9px; font-size: 12px; }
+
+    .node-label {
+      max-width: 100%;
+      max-height: 100%;
+      overflow: hidden;
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.35;
+    }
+
+    .port {
+      position: absolute;
+      z-index: 5;
+      width: 12px;
+      height: 12px;
+      border: 2px solid #1b1c1d;
+      border-radius: 50%;
+      background: #fff;
+      cursor: crosshair;
+      opacity: 0.35;
+      transition: opacity 0.15s, background 0.15s, transform 0.15s;
+    }
+
+    .flow-node:hover .port,
+    .flow-node.selected .port,
+    .port.connecting {
+      opacity: 1;
+    }
+
+    .port:hover {
+      background: #f0aca0;
+    }
+
+    .port-top { top: -6px; left: 50%; transform: translateX(-50%); }
+    .port-right { top: 50%; right: -6px; transform: translateY(-50%); }
+    .port-bottom { bottom: -6px; left: 50%; transform: translateX(-50%); }
+    .port-left { top: 50%; left: -6px; transform: translateY(-50%); }
+
+    .property-group {
+      margin-bottom: 12px;
+    }
+
+    .property-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .property-group input,
+    .property-group select,
+    .property-group textarea {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #d4d5d8;
+      border-radius: 5px;
+      font-family: inherit;
+      font-size: 13px;
+      background: #fff;
+    }
+
+    .property-group textarea {
+      min-height: 82px;
+      resize: vertical;
+    }
+
+    .compact-textarea {
+      min-height: 58px;
+      resize: vertical;
+      line-height: 1.4;
+    }
+
+    .font-size-row {
+      display: grid;
+      grid-template-columns: 1fr 74px;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .seq-font-size-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .seq-font-size-field {
+      display: grid;
+      grid-template-columns: 1fr 62px;
+      gap: 6px;
+      align-items: center;
+      padding: 7px 8px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fafafa;
+    }
+
+    .seq-font-size-field label {
+      margin: 0;
+      font-size: 12px;
+      font-weight: 700;
+      color: #53565b;
+    }
+
+    .seq-font-size-field input {
+      min-width: 0;
+      padding: 6px 7px;
+      text-align: center;
+    }
+
+    .property-group input:disabled {
+      color: #70747b;
+      background: #f4f4f5;
+    }
+
+    .node-number-editor {
+      display: grid;
+      grid-template-columns: auto minmax(90px, 1fr);
+      align-items: center;
+      gap: 7px;
+    }
+
+    .node-number-prefix {
+      padding: 8px 10px;
+      border: 1px solid #d4d5d8;
+      border-radius: 5px;
+      color: #54575c;
+      background: #fafafa;
+      font-family: Consolas, monospace;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .node-key-preview {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .node-key-preview code {
+      color: #414347;
+      font-family: Consolas, monospace;
+      font-weight: 700;
+    }
+
+    .system-row,
+    .branch-row {
+      margin-bottom: 8px;
+      padding: 8px;
+      border: 1px solid #e7e8e9;
+      border-radius: 6px;
+      background: #fafafa;
+    }
+
+    .system-row-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.25fr auto;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .branch-row-grid {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr auto;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .row-delete {
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      color: #fff;
+      background: #ef4444;
+    }
+
+    .connection-info {
+      padding: 9px;
+      border: 1px solid #e7e8e9;
+      border-radius: 6px;
+      font-size: 12px;
+      line-height: 1.5;
+      background: #fafafa;
+    }
+
+    .button-row {
+      display: flex;
+      gap: 8px;
+      margin: 10px 0;
+    }
+
+    .button-row button { flex: 1; }
+
+    #jsonOutput {
+      width: 100%;
+      height: 300px;
+      padding: 10px;
+      resize: vertical;
+      border: 1px solid #d4d5d8;
+      border-radius: 5px;
+      font-family: Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .divider {
+      margin: 16px 0;
+      border: 0;
+      border-top: 1px solid #e7e8e9;
+    }
+  
+
+    /* ===== Fixed Flowchart Editor geometry ===== */
+    /* 편집기 전체 폭(1480px)은 고정. 좌/우 패널을 접으면 그만큼 캔버스가 넓어진다. */
+    :root {
+      --sidebar-width: 190px;
+      --panel-width: 390px;
+      --fixed-editor-width: 1480px;
+      --collapsed-strip: 18px;
+    }
+
+    body { --fx-sidebar-w: 190px; --fx-panel-w: 390px; }
+    body.sidebar-collapsed { --fx-sidebar-w: var(--collapsed-strip); }
+    body.panel-collapsed { --fx-panel-w: var(--collapsed-strip); }
+
+    /* Fixed editor columns; logical workspace is a 16:9 page (1920x1080). */
+    .layout {
+      grid-template-columns: var(--fx-sidebar-w) minmax(0, 1fr) 0px var(--fx-panel-w) !important;
+      width: var(--fixed-editor-width) !important;
+      min-width: var(--fixed-editor-width) !important;
+      max-width: var(--fixed-editor-width) !important;
+    }
+
+    #canvasViewport {
+      width: auto !important;
+      min-width: 0 !important;
+      max-width: none !important;
+    }
+
+    .sidebar {
+      width: var(--fx-sidebar-w) !important;
+      min-width: var(--fx-sidebar-w) !important;
+      max-width: var(--fx-sidebar-w) !important;
+    }
+
+    .property-panel {
+      width: var(--fx-panel-w) !important;
+      min-width: var(--fx-panel-w) !important;
+      max-width: var(--fx-panel-w) !important;
+    }
+
+    .panel-resizer {
+      width: 0 !important;
+      min-width: 0 !important;
+      overflow: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+      cursor: default !important;
+    }
+
+    /* ===== Collapsible side panels (얇은 세로 탭) ===== */
+    .sidebar,
+    .property-panel {
+      position: relative;
+      padding: 0 !important;
+      overflow: hidden !important;
+      transition: width 0.15s ease, min-width 0.15s ease, max-width 0.15s ease;
+    }
+
+    /* 스크롤은 내부 body가 담당 → 접기 탭은 항상 패널 세로 중앙에 고정 */
+    .sidebar-body,
+    .property-panel-body {
+      height: 100%;
+      min-width: 0;
+      padding: 16px;
+      overflow-y: auto;
+      box-sizing: border-box;
+    }
+
+    .sidebar-body { padding-right: 20px; }
+    .property-panel-body { padding-left: 20px; }
+
+    .sidebar .panel-collapse-tab,
+    .property-panel .panel-collapse-tab {
+      position: absolute;
+      top: 50%;
+      z-index: 15;
+      width: 14px;
+      height: 46px;
+      margin: 0;
+      padding: 0;
+      transform: translateY(-50%);
+      border: 1px solid #d4d5d8;
+      border-radius: 4px;
+      color: #72767d;
+      background: #fafafa;
+      font-size: 10px;
+      line-height: 1;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+    }
+
+    .sidebar .panel-collapse-tab { right: 2px; }
+    .property-panel .panel-collapse-tab { left: 2px; }
+
+    .sidebar .panel-collapse-tab:hover,
+    .property-panel .panel-collapse-tab:hover {
+      color: #d43c21;
+      background: #f7f7f7;
+      border-color: #f0aca0;
+    }
+
+    body.sidebar-collapsed .sidebar,
+    body.panel-collapsed .property-panel {
+      padding: 0;
+      overflow: hidden;
+    }
+
+    body.sidebar-collapsed .sidebar-body,
+    body.panel-collapsed .property-panel-body { display: none; }
+
+    body.sidebar-collapsed .sidebar .panel-collapse-tab,
+    body.panel-collapsed .property-panel .panel-collapse-tab {
+      left: 50%;
+      right: auto;
+      transform: translate(-50%, -50%);
+    }
+
+    /* ===== Embedded Flowchart Block overrides ===== */
+    html, body { width: 100%; height: 100%; }
+    body { min-height: 100%; background: #fff; }
+    header, #sopInfoPanel { display: none !important; }
+    .layout { min-height: 100%; }
+
+    body.embed-complete .sidebar,
+    body.embed-complete .property-panel,
+    body.embed-complete .panel-resizer,
+    body.embed-complete .canvas-toolbar { display: none !important; }
+
+    body.embed-complete .layout {
+      grid-template-columns: minmax(0, 1fr) !important;
+      width: 100% !important;
+      min-width: 0 !important;
+      max-width: none !important;
+    }
+
+    body.embed-complete #canvasViewport {
+      width: 100% !important;
+      min-width: 0 !important;
+      max-width: none !important;
+      height: 100% !important;
+      overflow: hidden !important;
+      grid-column: 1 / -1 !important;
+    }
+
+    body.embed-complete #workspaceSizer {
+      width: 100% !important;
+      height: 100% !important;
+      min-width: 0 !important;
+      min-height: 0 !important;
+    }
+
+    body.embed-complete #workspace {
+      background-image: none !important;
+      background-color: #fff !important;
+      box-shadow: inset 0 0 0 2px #414347 !important;
+    }
+
+    body.embed-complete #canvasViewport { background: #fff !important; }
+
+    body.embed-complete .port,
+    body.embed-complete .edge-route-handle { display: none !important; }
+
+    body.embed-complete .flow-node.selected .node-shape { outline: none !important; }
+    body.embed-complete .edge-visible.selected { stroke: #414347 !important; stroke-width: 2.2 !important; }
+
+  
+:root{--sidebar-width:156px;--panel-width:280px;--primary:#dd3f23;--border:#e4e5e7}
+body{font-family:Inter,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;color:#3e4043}
+.layout{grid-template-columns:var(--sidebar-width) minmax(140px,1fr) 7px var(--panel-width)}
+.sidebar,.property-panel{background:#fcfcfd;padding:14px 12px}.sidebar h2,.property-panel h2{font-size:15px}.node-button{background:#f3f3f4!important;border:1px solid #e5e6e8;color:#55585d;font-size:13px!important;text-align:left}.property-group label{font-size:13px;color:#72767d}.property-group input,.property-group textarea,.property-group select{border-color:#e4e5e7;border-radius:6px}.help{background:#f5f5f5;color:#7e828a}.canvas-toolbar{border-color:#e3e4e6;box-shadow:0 3px 10px #393b3f20}#canvasViewport{background:#efeff0}.sidebar button{border-radius:7px}.panel-resizer{background:#ebebec}
+@media(max-width:600px){:root{--sidebar-width:115px;--panel-width:210px}.sidebar,.property-panel{padding:10px 8px}.layout{grid-template-columns:var(--sidebar-width) minmax(90px,1fr) 5px var(--panel-width)}}
+
+body{--fx-sidebar-w:156px;--fx-panel-w:280px}
+body:not(.embed-complete) .layout{width:100%!important;min-width:0!important;max-width:100%!important}
+.sidebar-body,.property-panel-body{padding:16px 12px}
+@media(max-width:760px){body{--fx-sidebar-w:120px;--fx-panel-w:230px}.sidebar-body,.property-panel-body{padding:12px 8px}}
+@media(max-width:500px){body{--fx-sidebar-w:100px;--fx-panel-w:180px}.sidebar-body button{padding:8px 5px;font-size:12px}.seq-font-size-grid{grid-template-columns:1fr}.property-group input,.property-group select,.property-group textarea{font-size:12px}}
+
+:root{--primary:#c83b2e;--border:#dedfe1;--background:#f8f8f8;--collapsed-strip:26px}
+body{--fx-sidebar-w:156px;--fx-panel-w:280px;color:#36383b}
+body.sidebar-collapsed{--fx-sidebar-w:26px!important}
+body.panel-collapsed{--fx-panel-w:26px!important}
+.sidebar,.property-panel{background:#f7f7f8}
+.sidebar-body,.property-panel-body{padding-right:28px;background:#f7f7f8}
+.property-group input,.property-group textarea,.property-group select,.compact-textarea{background:#fff!important;border-color:#d7d8db}
+button.panel-collapse-tab{width:24px;height:58px;font-size:16px;border:1px solid #d7d8db;background:#f4f4f4;color:#61646a;z-index:80;touch-action:manipulation;pointer-events:auto!important}
+button.panel-collapse-tab:hover{background:#e2e3e4;color:#b23527;border-color:#a7a9ae}
+button.panel-collapse-tab:focus-visible{outline:3px solid #999ca1;outline-offset:-3px}
+body.sidebar-collapsed .sidebar,body.panel-collapsed .property-panel{width:26px!important;min-width:26px!important;max-width:26px!important}
+body.sidebar-collapsed .sidebar-body,body.panel-collapsed .property-panel-body{display:none!important}
+#canvasViewport{background:#f5f5f6}#workspace{background-color:#fff}
+.node-button{background:#f0f0f1!important;border-color:#d2d3d5;color:#585b60}
+.primary-button{background:#c83b2e}.canvas-toolbar button:hover{background:#ebebec;border-color:#abaeb3}
+.flow-node.selected .node-shape{outline-color:rgba(210,76,44,.3)}.edge-visible.selected{stroke:#c83b2e}
+@media(max-width:760px){body{--fx-sidebar-w:120px;--fx-panel-w:230px}}
+@media(max-width:500px){body{--fx-sidebar-w:100px;--fx-panel-w:180px}.sidebar-body,.property-panel-body{padding-right:26px}}
+
+/* Clear neutral tools, saturated red/orange interaction accents. */
+:root{--primary:#df002b;--border:#dcdfe4;--background:#f3f4f6;--text:#24272c;--muted:#686e77}
+body{color:#24272c}.sidebar,.property-panel,.sidebar-body,.property-panel-body{background:#f8f9fb}
+.property-panel input,.property-panel textarea,.property-panel select{background:#fff!important;border-color:#d8dce2;color:#24272c}
+#canvasViewport{background:#f0f1f4}#workspace{background-color:#fff}
+.node-button{background:#fff!important;color:#393d43;border-color:#d8dce2}.node-button:hover{background:#fff2e8!important;border-color:#ff7a00;color:#b54b00}
+.primary-button{background:#df002b;color:#fff}.primary-button:hover{background:#bc0024}.secondary-button{background:#454a53}
+button.panel-collapse-tab{background:#fff;color:#df002b;border-color:#d8dce2}
+button.panel-collapse-tab:hover{background:#fff0f3;border-color:#df002b;color:#df002b}
+button.panel-collapse-tab:focus-visible{outline-color:#ff7a00}
+.canvas-toolbar{background:#fff;border-color:#d8dce2}.canvas-toolbar button{background:#fff;color:#353940;border-color:#d8dce2}.canvas-toolbar button:hover{background:#fff0f3;border-color:#df002b;color:#c00026}
+.flow-node.selected .node-shape{outline-color:rgba(234,0,44,.28)}.edge-visible.selected{stroke:#df002b}.port:hover{background:#ffad66}
+
+/* ===== 노드 추가: 텍스트 버튼 + 왼쪽 작은 도형 아이콘 (색은 파일 기존 톤 그대로) ===== */
+.sidebar .node-pal{display:flex;align-items:center;gap:10px;width:100%;height:40px;margin:0 0 6px;padding:0 10px!important;
+  background:#fff!important;border:1px solid #d8dce2!important;border-radius:8px;color:#393d43;font-size:13px!important;font-weight:600;text-align:left;
+  box-shadow:none;transition:border-color .12s,background .12s,color .12s}
+.sidebar .node-pal:hover{border-color:#ff7a00!important;background:#fff2e8!important;color:#b54b00}
+.sidebar .node-pal:active{background:#ffe6d1!important}
+.node-pal .pal-ico{flex:0 0 auto;width:20px;height:20px;color:#393d43;transition:color .12s}
+.node-pal:hover .pal-ico{color:#ff7a00}
+.node-pal span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style>
+</head>
+<body>
+  <header>
+    <h1>ETCH SOP FLOW JSON EDITOR</h1>
+  </header>
+
+  <section id="sopInfoPanel" class="sop-info-panel" aria-label="SOP 기본정보">
+    <div class="sop-info-header">
+      <div class="sop-info-title-wrap">
+        <h2 class="sop-info-title">SOP 기본정보</h2>
+        <span id="sopInfoSummary" class="sop-info-summary">SOP 번호와 이름을 입력하세요.</span>
+      </div>
+      <button id="sopInfoToggle" class="sop-info-toggle" type="button" onclick="toggleSopInfoPanel()">접기 ▲</button>
+    </div>
+
+    <div class="sop-info-grid">
+      <div class="sop-info-field">
+        <label for="sopIdInput">SOP 번호</label>
+        <input
+          id="sopIdInput"
+          type="text"
+          placeholder="SOP 번호"
+          oninput="updateSopInfo('sop_id', this.value)"
+        />
+      </div>
+
+      <div class="sop-info-field">
+        <label for="sopNameInput">SOP 이름</label>
+        <input
+          id="sopNameInput"
+          type="text"
+          placeholder="SOP 이름"
+          oninput="updateSopInfo('sop_name', this.value)"
+        />
+      </div>
+
+      <div class="sop-info-field sop-info-description">
+        <label for="sopDescriptionInput">Description</label>
+        <textarea
+          id="sopDescriptionInput"
+          placeholder="이 SOP의 목적, 적용 상황 및 전체 절차를 설명하세요."
+          oninput="updateSopInfo('description', this.value)"
+        ></textarea>
+      </div>
+    </div>
+  </section>
+
+  <div class="layout">
+    <aside id="nodeSidebar" class="sidebar">
+      <button id="sidebarToggle" class="panel-collapse-tab" type="button" title="노드 추가 패널 접기" onclick="toggleNodeSidebar()">◂</button>
+      <div class="sidebar-body">
+        <h2>노드 추가</h2>
+        <button class="node-button node-pal" onclick="addNode('start')" title="Start 노드 추가">
+          <svg class="pal-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" fill="currentColor"/></svg><span>Start</span></button>
+        <button class="node-button node-pal" onclick="addNode('seq')" title="Seq(작업 단계) 노드 추가">
+          <svg class="pal-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="1.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 9.5h18M3 15.5h18M9 4v5.5" stroke="currentColor" stroke-width="2"/></svg><span>Seq</span></button>
+        <button class="node-button node-pal" onclick="addNode('decision')" title="Decision(분기) 노드 추가">
+          <svg class="pal-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8 21.2 12 12 21.2 2.8 12Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span>Decision</span></button>
+        <button class="node-button node-pal" onclick="addNode('sop')" title="SOP Reference 노드 추가">
+          <svg class="pal-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="6.5" width="19" height="11" rx="5.5" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>SOP Reference</span></button>
+        <button class="node-button node-pal" onclick="addNode('end')" title="End 노드 추가">
+          <svg class="pal-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4.5" fill="currentColor"/></svg><span>End</span></button>
+
+        <hr class="divider" />
+
+        <button class="danger-button" onclick="clearAll()">전체 삭제</button>
+
+        <div class="help">
+          <b>선 연결 방법</b><br />
+          노드의 위·오른쪽·아래·왼쪽 중앙 점에서 마우스를 누른 채 다른 노드의 연결점까지 드래그하세요.<br /><br />
+          Decision에서 연결한 선은 오른쪽 속성창에서 조건명을 입력할 수 있습니다.<br /><br />
+          연결선을 클릭하면 오른쪽에서 <b>꺾은 선 / 직선</b>을 선택할 수 있습니다. 꺾은 선은 파란 조절점을 드래그해 경로를 수정할 수 있습니다.<br /><br />
+          박스 크기는 고정이며, 일반 노드는 <b>Font Size</b>를 조절할 수 있습니다. SEQ 노드는 Number / Role Owner / Action 제목 / Action 내용 / System / Manual 글자 크기를 각각 조절할 수 있습니다.<br /><br />
+          Name / Action / Role Owner 입력창에서는 Enter로 줄바꿈할 수 있습니다.<br /><br />
+          상단의 − / ＋ 버튼으로 플로우를 확대·축소할 수 있고, <b>격자</b> 버튼으로 배경선을 켜거나 끌 수 있습니다. <b>PNG</b> 버튼으로 현재 플로우를 이미지로 저장할 수 있습니다.<br /><br />
+          오른쪽 구분선을 드래그하면 입력창 너비를 조절할 수 있습니다.<br /><br />
+          노드 번호는 오른쪽 속성창에서 직접 변경할 수 있습니다. 삭제된 번호는 다음 노드 추가 시 다시 사용됩니다.
+        </div>
+      </div>
+    </aside>
+
+    <main id="canvasViewport">
+      <div class="canvas-toolbar" aria-label="플로우 도구">
+        <button type="button" title="축소" onclick="changeZoom(-0.1)">−</button>
+        <button type="button" id="zoomLabel" title="100%로 초기화" onclick="resetZoom()">100%</button>
+        <button type="button" title="16:9 페이지 전체가 보이도록 맞춤" onclick="fitZoomToPage()">맞춤</button>
+        <button type="button" title="확대" onclick="changeZoom(0.1)">＋</button>
+        <button type="button" id="gridToggleButton" title="배경 격자선 표시/숨김" onclick="toggleGrid()">격자 ✓</button>
+        <button type="button" title="플로우 다이어그램을 PNG 이미지로 저장" onclick="exportFlowImage()">PNG</button>
+      </div>
+      <div id="workspaceSizer">
+        <div id="workspace">
+          <svg id="connectionLayer">
+            <defs>
+              <marker id="arrowHead" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+                <path d="M0,0 L0,6 L9,3 z" fill="#374151"></path>
+              </marker>
+            </defs>
+          </svg>
+        </div>
+      </div>
+    </main>
+
+    <div id="panelResizer" class="panel-resizer" title="드래그하여 입력창 너비 조절"></div>
+
+    <aside id="propertyPanelAside" class="property-panel">
+      <button id="panelToggle" class="panel-collapse-tab" type="button" title="입력창 접기" onclick="togglePropertyPanel()">▸</button>
+      <div class="property-panel-body">
+        <h2>선택 항목</h2>
+        <div id="propertyPanel">
+          <p class="muted">노드를 선택하세요.</p>
+        </div>
+
+        <hr class="divider" />
+
+        <h2>JSON 결과</h2>
+        <div class="button-row">
+          <button class="primary-button" onclick="generateJson()">JSON 변환</button>
+          <button class="secondary-button" onclick="downloadJson()">다운로드</button>
+        </div>
+        <textarea id="jsonOutput" readonly></textarea>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    window.__FLOW_INSTANCE_ID = "__FLOW_INSTANCE_ID__";
+    let nodes = [];
+    let edges = [];
+    let selectedNodeKey = null;
+    let selectedEdgeKey = null;
+    let connectionDraft = null;
+    let zoomLevel = 1;
+    let gridVisible = true;
+    let sopInfo = {
+      sop_id: "",
+      sop_name: "",
+      description: ""
+    };
+    let sopInfoCollapsed = false;
+    // 서버(라이브러리)에 저장된 SOP 목록. 부모 창(SOP_STUDIO)이 window.__flowSyncLibrary(list) 로 넘겨준다.
+    // SOP 상자가 "어느 문서를 가리키는지" 를 이 목록으로 확인한다. 목록이 아직 안 왔으면 비어 있다.
+    let libraryList = [];                 // [{ id, sop_no, name, area, status }]
+    let libraryById = new Map();          // 문서 UUID → 문서
+    let libraryByNo = new Map();          // SOP 번호 → 문서
+    let nodeSidebarCollapsed = window.innerWidth < 600;
+    let propertyPanelCollapsed = window.innerWidth < 760;
+
+    const WORKSPACE_WIDTH = 1920;   // 16:9 페이지 (PPT 슬라이드 기준)
+    const WORKSPACE_HEIGHT = 1080;
+    const MIN_ZOOM = 0.3;
+    const MAX_ZOOM = 2;
+
+    const counters = {
+      start: 0,
+      seq: 0,
+      decision: 0,
+      sop: 0,
+      end: 0
+    };
+
+    const nodeSizes = {
+      start: { width: 112, height: 112 },
+      seq: { width: 176, height: 131 },
+      decision: { width: 128, height: 128 },
+      sop: { width: 152, height: 96 },
+      end: { width: 112, height: 112 }
+    };
+
+    function updateSopInfo(field, value) {
+      if (!(field in sopInfo)) return;
+      sopInfo[field] = value;
+      updateSopInfoSummary();
+    }
+
+    function updateSopInfoSummary() {
+      const summary = document.getElementById("sopInfoSummary");
+      if (!summary) return;
+
+      const parts = [sopInfo.sop_id, sopInfo.sop_name]
+        .map(value => String(value || "").trim())
+        .filter(Boolean);
+
+      summary.textContent = parts.length > 0
+        ? parts.join(" | ")
+        : "SOP 번호와 이름을 입력하세요.";
+    }
+
+    function applySopInfoPanelState() {
+      const panel = document.getElementById("sopInfoPanel");
+      const toggle = document.getElementById("sopInfoToggle");
+      if (!panel || !toggle) return;
+
+      panel.classList.toggle("collapsed", sopInfoCollapsed);
+      toggle.textContent = sopInfoCollapsed ? "펼치기 ▼" : "접기 ▲";
+      toggle.setAttribute("aria-expanded", String(!sopInfoCollapsed));
+    }
+
+    function toggleSopInfoPanel() {
+      sopInfoCollapsed = !sopInfoCollapsed;
+      applySopInfoPanelState();
+    }
+
+    function renderSopInfoPanel() {
+      const sopIdInput = document.getElementById("sopIdInput");
+      const sopNameInput = document.getElementById("sopNameInput");
+      const descriptionInput = document.getElementById("sopDescriptionInput");
+
+      if (sopIdInput) sopIdInput.value = sopInfo.sop_id || "";
+      if (sopNameInput) sopNameInput.value = sopInfo.sop_name || "";
+      if (descriptionInput) descriptionInput.value = sopInfo.description || "";
+
+      updateSopInfoSummary();
+      applySopInfoPanelState();
+    }
+
+    function extractNodeNumber(nodeKey, type) {
+      const prefix = `${type}_`;
+      const value = String(nodeKey || "");
+      if (!value.startsWith(prefix)) return null;
+
+      const suffix = value.slice(prefix.length);
+      if (!/^[1-9]\d*$/.test(suffix)) return null;
+
+      const number = Number(suffix);
+      return Number.isSafeInteger(number) ? number : null;
+    }
+
+    function getNextAvailableNumber(type) {
+      const usedNumbers = new Set(
+        nodes
+          .filter(node => node.node_type === type)
+          .map(node => extractNodeNumber(node.node, type))
+          .filter(number => number !== null)
+      );
+
+      let number = 1;
+      while (usedNumbers.has(number)) number += 1;
+      return number;
+    }
+
+    function syncCountersFromNodes() {
+      for (const type of Object.keys(counters)) {
+        const numbers = nodes
+          .filter(node => node.node_type === type)
+          .map(node => extractNodeNumber(node.node, type))
+          .filter(number => number !== null);
+        counters[type] = numbers.length ? Math.max(...numbers) : 0;
+      }
+    }
+
+    function createNodeData(type) {
+      const nodeNumber = getNextAvailableNumber(type);
+      const nodeKey = `${type}_${nodeNumber}`;
+      counters[type] = Math.max(counters[type] || 0, nodeNumber);
+      const base = {
+        node: nodeKey,
+        node_type: type,
+        x: 120 + nodes.length * 34,
+        y: 90 + nodes.length * 42
+      };
+
+      if (type === "start") {
+        return { ...base, name: "시작 조건 입력", font_size: 17 };
+      }
+
+      if (type === "end") {
+        return { ...base, name: "End", font_size: 17 };
+      }
+
+      if (type === "seq") {
+        return {
+          ...base,
+          role_owner: "Role Owner",
+          action: "Action",
+          description: "",
+          systems: [],
+          manual: [],
+          font_size: 15,
+          seq_font_sizes: {
+            number: 13,
+            role_owner: 13,
+            action_label: 12,
+            action: 15,
+            system: 11,
+            manual: 11
+          }
+        };
+      }
+
+      if (type === "decision") {
+        return {
+          ...base,
+          role_owner: "",
+          action: "판단 조건 입력",
+          description: "",
+          font_size: 14
+        };
+      }
+
+      // SOP 상자. ref_document_id 가 "진짜 연결"(가리키는 문서의 UUID)이고, sop_id/sop_name 은 화면에 보여 주는 글자(캐시)다.
+      return {
+        ...base,
+        sop_id: "",
+        sop_name: "SOP Name",
+        ref_document_id: null,
+        description: "",
+        font_size: 17
+      };
+    }
+
+    function getDefaultNodeFontSize(type) {
+      if (type === "seq") return 15;
+      if (type === "decision") return 14;
+      return 17;
+    }
+
+    const seqFontDefaults = {
+      number: 13,
+      role_owner: 13,
+      action_label: 12,
+      action: 15,
+      system: 11,
+      manual: 11
+    };
+
+    function ensureSeqFontSizes(node) {
+      if (!node || node.node_type !== "seq") return;
+      if (!node.seq_font_sizes || typeof node.seq_font_sizes !== "object") {
+        node.seq_font_sizes = {};
+      }
+
+      for (const [field, defaultValue] of Object.entries(seqFontDefaults)) {
+        if (!Number.isFinite(Number(node.seq_font_sizes[field]))) {
+          node.seq_font_sizes[field] =
+            field === "action" && Number.isFinite(Number(node.font_size))
+              ? Number(node.font_size)
+              : defaultValue;
+        }
+      }
+    }
+
+    function getSeqFontSize(node, field) {
+      ensureSeqFontSizes(node);
+      const value = Number(node?.seq_font_sizes?.[field]);
+      return Number.isFinite(value)
+        ? Math.max(8, Math.min(40, value))
+        : (seqFontDefaults[field] || 12);
+    }
+
+    function getSystemSummary(node) {
+      const parts = [];
+      for (const system of node.systems || []) {
+        const name = (system.name || "").trim();
+        const menus = (system.menus || []).filter(Boolean);
+        if (!name) continue;
+        parts.push(menus.length ? `${name}: ${menus.join(", ")}` : name);
+      }
+      return parts.join(" / ");
+    }
+
+    function getManualSummary(node) {
+      const manual = (node.manual || []).filter(Boolean);
+      return manual.length ? `Manual: ${manual.join(", ")}` : "";
+    }
+
+    function getNodeFontSize(node) {
+      const value = Number(node?.font_size);
+      if (Number.isFinite(value)) {
+        return Math.max(9, Math.min(36, value));
+      }
+      return getDefaultNodeFontSize(node?.node_type);
+    }
+
+    function addNode(type) {
+      const node = createNodeData(type);
+      nodes.push(node);
+      selectedNodeKey = node.node;
+      selectedEdgeKey = null;
+      render();
+    }
+
+    function render() {
+      const workspace = document.getElementById("workspace");
+      workspace.querySelectorAll(".flow-node").forEach(element => element.remove());
+
+      for (const node of nodes) {
+        workspace.appendChild(createNodeElement(node));
+      }
+
+      drawEdges();
+      renderPropertyPanel();
+    }
+
+    function createNodeElement(node) {
+      const element = document.createElement("div");
+      element.className = `flow-node ${node.node_type}` + (node.node === selectedNodeKey ? " selected" : "");
+      element.style.left = `${node.x}px`;
+      element.style.top = `${node.y}px`;
+      element.dataset.node = node.node;
+
+      const shape = document.createElement("div");
+      shape.className = "node-shape";
+      shape.innerHTML = renderNodeShapeHtml(node);
+      applySopRefClass(element, node);
+
+      // SOP 상자를 더블클릭하면 그 문서를 연다 (부모 창이 실제로 열어 준다)
+      if (node.node_type === "sop") {
+        element.addEventListener("dblclick", event => { event.stopPropagation(); openSopRef(node.node); });
+      }
+
+      element.appendChild(shape);
+      element.appendChild(createPort("top"));
+      element.appendChild(createPort("right"));
+      element.appendChild(createPort("bottom"));
+      element.appendChild(createPort("left"));
+
+      element.addEventListener("mousedown", startNodeDrag);
+      element.addEventListener("click", event => {
+        event.stopPropagation();
+        selectedNodeKey = node.node;
+        selectedEdgeKey = null;
+        render();
+      });
+
+      return element;
+    }
+
+    function createPort(position) {
+      const port = document.createElement("div");
+      port.className = `port port-${position}`;
+      port.dataset.port = position;
+      port.addEventListener("mousedown", beginConnection);
+      return port;
+    }
+
+    function renderSeqNode(node) {
+      ensureSeqFontSizes(node);
+
+      const number = node.node.split("_").pop();
+      const systemSummary = getSystemSummary(node);
+      const manualSummary = getManualSummary(node);
+      const executionSummary = [systemSummary, manualSummary].filter(Boolean).join(" / ");
+
+      return `
+        <div class="seq-top">
+          <div class="seq-number" style="font-size:${getSeqFontSize(node, "number")}px"># ${escapeHtml(number)}</div>
+          <div class="seq-role" style="font-size:${getSeqFontSize(node, "role_owner")}px">${escapeHtml(node.role_owner || "")}</div>
+        </div>
+        <div class="seq-action">
+          
+          <div class="seq-action-text" style="font-size:${getSeqFontSize(node, "action")}px">${escapeHtml(node.action || "")}</div>
+        </div>
+        <div class="seq-execution" title="${escapeHtml(executionSummary)}">
+          ${systemSummary
+            ? `<div class="seq-system-text" style="font-size:${getSeqFontSize(node, "system")}px">${escapeHtml(systemSummary)}</div>`
+            : ""}
+          ${manualSummary
+            ? `<div class="seq-manual-text" style="font-size:${getSeqFontSize(node, "manual")}px">${escapeHtml(manualSummary)}</div>`
+            : ""}
+          ${!systemSummary && !manualSummary
+            ? `<div class="seq-execution-placeholder" style="font-size:${getSeqFontSize(node, "system")}px">System / Manual</div>`
+            : ""}
+        </div>
+      `;
+    }
+
+    function getExecutionSummary(node) {
+      return [getSystemSummary(node), getManualSummary(node)]
+        .filter(Boolean)
+        .join(" / ");
+    }
+
+    function getNodeDisplayName(node) {
+      if (node.node_type === "decision") {
+        return node.action || "";
+      }
+      if (node.node_type === "sop") {
+        // 라이브러리 목록에 연결된 문서가 있으면 저장된 글자 대신 그 문서의 "현재" 이름을 보여 준다
+        return resolveSopRef(node).sop_name;
+      }
+      return node.name || "";
+    }
+
+    // 상자 안쪽 HTML 을 만든다. (처음 그릴 때와 속성창에서 고칠 때 같은 모양이 나오도록 한 곳에 모음)
+    function renderNodeShapeHtml(node) {
+      if (node.node_type === "seq") return renderSeqNode(node);
+      const label = `<div class="node-label" style="font-size:${getNodeFontSize(node)}px">${escapeHtml(getNodeDisplayName(node))}</div>`;
+      if (node.node_type === "sop") {
+        const ref = resolveSopRef(node);
+        // SOP 상자는 이름 위에 SOP 번호를 작게 한 줄 더 보여 준다 (없으면 생략)
+        return (ref.sop_no ? `<div class="node-sub">${escapeHtml(ref.sop_no)}</div>` : "") + label;
+      }
+      return label;
+    }
+
+    // SOP 상자의 참조 상태를 요소의 class 로 표시한다 (ref-linked / ref-pending / ref-missing / ref-empty / ref-retired)
+    function applySopRefClass(element, node) {
+      if (node.node_type !== "sop") return;
+      ["ref-linked", "ref-pending", "ref-missing", "ref-empty", "ref-retired", "ref-unknown"].forEach(name => element.classList.remove(name));
+      element.classList.add("ref-" + resolveSopRef(node).state);
+    }
+
+    // SOP 상자가 지금 어떤 상태인지, 화면에 무엇을 보여 줄지 계산한다.
+    //   linked  : ref_document_id 가 라이브러리 목록에 있음 → 그 문서의 현재 번호·이름을 보여 줌
+    //   retired : 위와 같지만 그 문서가 폐기(retired)됨
+    //   pending : 번호만 있는데 그 번호가 목록에 있음 → 다음 저장 때 서버가 UUID 를 채워 준다 (승격 대기)
+    //   missing : 번호만 있고 목록에 없음 → 아직 만들어지지 않은 문서(미작성)
+    //   empty   : 번호도 UUID 도 없음
+    //   unknown : UUID 는 있는데 목록이 아직 안 왔거나 목록에서 못 찾음 → 저장된 글자 그대로 보여 줌
+    function resolveSopRef(node) {
+      const storedNo = String(node.sop_id || "").trim();
+      const storedName = node.sop_name || "";
+      const refId = node.ref_document_id || null;
+      if (refId) {
+        const doc = libraryById.get(refId);
+        if (doc) {
+          return { state: doc.status === "retired" ? "retired" : "linked", doc, sop_no: doc.sop_no || storedNo, sop_name: doc.name || storedName };
+        }
+        return { state: "unknown", doc: null, sop_no: storedNo, sop_name: storedName };
+      }
+      if (storedNo) {
+        const doc = libraryByNo.get(storedNo);
+        if (doc) return { state: "pending", doc, sop_no: storedNo, sop_name: storedName || doc.name || "" };
+        return { state: "missing", doc: null, sop_no: storedNo, sop_name: storedName };
+      }
+      return { state: "empty", doc: null, sop_no: "", sop_name: storedName };
+    }
+
+    // SOP 상자가 가리키는 문서를 부모 창(SOP_STUDIO)에 열어 달라고 부탁한다. 부모가 없으면(단독 실행) 아무것도 안 한다.
+    function openSopRef(nodeKey) {
+      const node = nodes.find(item => item.node === nodeKey && item.node_type === "sop");
+      if (!node) return;
+      const ref = resolveSopRef(node);
+      const payload = { id: node.ref_document_id || null, sop_no: ref.sop_no || "" };
+      if (!payload.id && !payload.sop_no) return;
+      try {
+        const parentWindow = window.parent;
+        if (parentWindow && parentWindow !== window && typeof parentWindow.__studioOpenSopRef === "function") {
+          parentWindow.__studioOpenSopRef(payload);
+        }
+      } catch (error) {
+        // 부모 창에 접근할 수 없으면(다른 출처 등) 조용히 무시
+      }
+    }
+
+    // sop 노드의 sop_id/sop_name 을 라이브러리 기준 최신 글자로 맞춘다. 내보내기(project/ppt/json) 직전에 부른다.
+    // 규칙은 서버의 저장 규칙과 같다: UUID 가 목록에 있으면 그 문서의 번호·이름으로, 번호만 있는데 목록에 있으면 UUID 를 채움(승격).
+    function refreshSopRefsFromLibrary() {
+      if (!libraryList.length) return;   // 목록이 아직 안 왔으면 저장된 글자를 건드리지 않는다
+      for (const node of nodes) {
+        if (node.node_type !== "sop") continue;
+        const ref = resolveSopRef(node);
+        const before = JSON.stringify([node.sop_id, node.sop_name, node.ref_document_id]);   // 바뀌었는지 비교하려고 기억해 둔다
+        if (ref.state === "linked" || ref.state === "retired") {
+          node.sop_id = ref.doc.sop_no || node.sop_id;
+          node.sop_name = ref.doc.name || node.sop_name;
+        } else if (ref.state === "pending") {
+          node.ref_document_id = ref.doc.id;
+          node.sop_name = ref.doc.name || node.sop_name;
+        }
+        // 값이 실제로 바뀐 상자(예: 승격돼 "연결 대기" → "연결됨")는 화면의 상자와 속성창도 같이 새로 그린다.
+        // 이 함수는 부모 창의 자동 임시저장 때문에 자주 불리므로, 안 바뀐 상자는 건드리지 않는다.
+        if (JSON.stringify([node.sop_id, node.sop_name, node.ref_document_id]) === before) continue;
+        refreshSelectedNodeVisual(node);
+        if (node.node === selectedNodeKey) refreshSopRefPanel(node);
+      }
+    }
+
+    // 속성창의 "참조 상태" 줄과 이름 칸을 지금 값으로 다시 그린다. 연결된 문서가 있으면 이름은 그 문서를 따르므로 읽기 전용으로 잠근다.
+    function refreshSopRefPanel(node) {
+      const status = document.getElementById("sopRefStatus");
+      if (status) status.outerHTML = renderSopRefStatusHtml(node);
+      const nameInput = document.getElementById("sopRefName");
+      if (!nameInput) return;
+      const ref = resolveSopRef(node);
+      nameInput.value = ref.sop_name || "";
+      nameInput.readOnly = ref.state === "linked" || ref.state === "retired";
+    }
+
+    // 속성창 SOP ID 입력칸에 붙는 자동완성 목록(<datalist>) HTML. "SOP번호 — 이름" 모양으로 보여 준다.
+    function renderSopLibraryDatalist() {
+      const options = libraryList
+        .filter(doc => doc.sop_no)
+        .map(doc => `<option value="${escapeHtml(doc.sop_no)}">${escapeHtml(doc.sop_no)} — ${escapeHtml(doc.name || "")}${doc.status === "retired" ? " (폐기)" : ""}</option>`)
+        .join("");
+      return `<datalist id="sopLibraryList">${options}</datalist>`;
+    }
+
+    // 속성창의 "참조 상태" 한 줄 HTML (상태 문구 + [열기] 버튼)
+    function renderSopRefStatusHtml(node) {
+      const ref = resolveSopRef(node);
+      const label = {
+        linked: `연결됨 ✓ ${ref.sop_no}${ref.sop_name ? " — " + ref.sop_name : ""}`,
+        retired: `폐기된 문서를 가리킴 (${ref.sop_no}${ref.sop_name ? " — " + ref.sop_name : ""})`,
+        pending: "연결 대기 (저장하면 연결됩니다)",
+        missing: "미작성 (라이브러리에 없는 번호)",
+        empty: "참조 대상이 비어 있습니다 (저장은 되지만 경고가 표시됩니다)",
+        unknown: libraryList.length ? "연결된 문서를 목록에서 찾을 수 없습니다 (저장하면 정리됩니다)" : "라이브러리 목록을 불러오는 중…"
+      }[ref.state];
+      const canOpen = ref.state === "linked" || ref.state === "retired" || ref.state === "pending";
+      return `
+        <div class="sop-ref-status ${ref.state}" id="sopRefStatus">
+          <span>${escapeHtml(label)}</span>
+          ${canOpen ? `<button type="button" class="small-button" onclick="openSopRef('${escapeHtml(node.node)}')">열기</button>` : ""}
+        </div>
+      `;
+    }
+
+    // 속성창에서 SOP ID 를 타이핑할 때마다 호출된다.
+    // 입력값이 목록의 SOP 번호와 정확히 일치하면 UUID 와 이름을 자동으로 채우고, 아니면 연결을 끊는다(미작성 허용).
+    function updateSopRef(rawValue) {
+      const node = nodes.find(item => item.node === selectedNodeKey && item.node_type === "sop");
+      if (!node) return;
+      const value = String(rawValue ?? "");
+      node.sop_id = value;
+      const doc = libraryByNo.get(value.trim());
+      if (doc) {
+        node.ref_document_id = doc.id;
+        node.sop_name = doc.name || node.sop_name;
+      } else {
+        node.ref_document_id = null;
+      }
+      refreshSelectedNodeVisual(node);
+      refreshSopRefPanel(node);
+    }
+
+    // 부모 창이 라이브러리 목록을 넘겨줄 때: 두 개의 찾기표(id→문서, 번호→문서)를 다시 만들고 SOP 상자만 다시 그린다.
+    // (render() 전체를 다시 하지 않는 이유: 속성창에 입력 중인 글자가 날아가지 않게 하려고)
+    function syncLibrary(list) {
+      libraryList = Array.isArray(list) ? list.filter(doc => doc && typeof doc === "object") : [];
+      libraryById = new Map();
+      libraryByNo = new Map();
+      for (const doc of libraryList) {
+        if (doc.id) libraryById.set(String(doc.id), doc);
+        // 서버는 번호 하나를 문서 하나에만 주므로(폐기해도 번호를 놓지 않음) 보통 겹치지 않지만, 혹시 겹치면 폐기되지 않은 문서를 우선한다 (안전장치)
+        const no = String(doc.sop_no || "").trim();
+        if (no && (!libraryByNo.has(no) || libraryByNo.get(no).status === "retired")) libraryByNo.set(no, doc);
+      }
+      for (const node of nodes) {
+        if (node.node_type === "sop") refreshSelectedNodeVisual(node);
+      }
+      const datalist = document.getElementById("sopLibraryList");
+      if (datalist) datalist.outerHTML = renderSopLibraryDatalist();
+      const selected = nodes.find(item => item.node === selectedNodeKey);
+      if (selected && selected.node_type === "sop") refreshSopRefPanel(selected);
+    }
+
+    function startNodeDrag(event) {
+      if (event.button !== 0 || event.target.closest(".port")) {
+        return;
+      }
+
+      event.preventDefault();
+      const element = event.currentTarget;
+      const nodeKey = element.dataset.node;
+      const node = nodes.find(item => item.node === nodeKey);
+      if (!node) return;
+
+      selectedNodeKey = nodeKey;
+      selectedEdgeKey = null;
+      element.classList.add("selected");
+
+      const startMouseX = event.clientX;
+      const startMouseY = event.clientY;
+      const startNodeX = node.x;
+      const startNodeY = node.y;
+      const size = nodeSizes[node.node_type];
+      const workspace = document.getElementById("workspace");
+
+      function onMouseMove(moveEvent) {
+        const nextX = startNodeX + (moveEvent.clientX - startMouseX) / zoomLevel;
+        const nextY = startNodeY + (moveEvent.clientY - startMouseY) / zoomLevel;
+        node.x = Math.max(0, Math.min(workspace.clientWidth - size.width, nextX));
+        node.y = Math.max(0, Math.min(workspace.clientHeight - size.height, nextY));
+        element.style.left = `${node.x}px`;
+        element.style.top = `${node.y}px`;
+        drawEdges();
+      }
+
+      function onMouseUp() {
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
+        renderPropertyPanel();
+      }
+
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
+    }
+
+    function beginConnection(event) {
+      if (event.button !== 0) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const port = event.currentTarget;
+      const nodeElement = port.closest(".flow-node");
+      const sourceNode = nodes.find(node => node.node === nodeElement.dataset.node);
+
+      if (!sourceNode || sourceNode.node_type === "end") {
+        alert("End 노드에서는 다른 노드로 선을 연결할 수 없습니다.");
+        return;
+      }
+
+      selectedNodeKey = sourceNode.node;
+      selectedEdgeKey = null;
+      port.classList.add("connecting");
+
+      const startPoint = getWorkspacePointer(event.clientX, event.clientY);
+      connectionDraft = {
+        source: sourceNode.node,
+        sourcePort: port.dataset.port,
+        mouseX: startPoint.x,
+        mouseY: startPoint.y
+      };
+
+      drawEdges();
+
+      function onMouseMove(moveEvent) {
+        const point = getWorkspacePointer(moveEvent.clientX, moveEvent.clientY);
+        connectionDraft.mouseX = point.x;
+        connectionDraft.mouseY = point.y;
+        drawEdges();
+      }
+
+      function onMouseUp(upEvent) {
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
+        port.classList.remove("connecting");
+
+        const targetElement = document.elementFromPoint(upEvent.clientX, upEvent.clientY);
+        const targetPort = targetElement?.closest?.(".port");
+        const targetNodeElement = targetPort?.closest?.(".flow-node");
+
+        if (targetPort && targetNodeElement) {
+          finishConnection(
+            connectionDraft.source,
+            connectionDraft.sourcePort,
+            targetNodeElement.dataset.node,
+            targetPort.dataset.port
+          );
+        }
+
+        connectionDraft = null;
+        render();
+      }
+
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
+    }
+
+    function finishConnection(source, sourcePort, target, targetPort) {
+      if (source === target) {
+        alert("같은 노드끼리는 연결할 수 없습니다.");
+        return;
+      }
+
+      const sourceNode = nodes.find(node => node.node === source);
+      if (!sourceNode) return;
+
+      if (sourceNode.node_type !== "decision") {
+        edges = edges.filter(edge => edge.source !== source);
+      }
+
+      const duplicate = edges.some(edge =>
+        edge.source === source &&
+        edge.target === target &&
+        edge.sourcePort === sourcePort &&
+        edge.targetPort === targetPort
+      );
+
+      if (duplicate) return;
+
+      const conditionNumber = edges.filter(edge => edge.source === source).length + 1;
+      const edgeKey = `edge_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+      edges.push({
+        edge: edgeKey,
+        source,
+        target,
+        sourcePort,
+        targetPort,
+        condition: sourceNode.node_type === "decision" ? `조건 ${conditionNumber}` : "",
+        line_type: "orthogonal",
+        route: null
+      });
+      selectedEdgeKey = edgeKey;
+      selectedNodeKey = null;
+    }
+
+    function drawEdges() {
+      const svg = document.getElementById("connectionLayer");
+      const defs = svg.querySelector("defs");
+      svg.innerHTML = "";
+      svg.appendChild(defs);
+
+      for (const edge of edges) {
+        const start = getPortPoint(edge.source, edge.sourcePort);
+        const end = getPortPoint(edge.target, edge.targetPort);
+        if (!start || !end) continue;
+
+        appendEdgePolyline(svg, edge, start, end);
+      }
+
+      if (connectionDraft) {
+        const start = getPortPoint(connectionDraft.source, connectionDraft.sourcePort);
+        const end = { x: connectionDraft.mouseX, y: connectionDraft.mouseY };
+        if (start) appendTemporaryEdge(svg, start, end, connectionDraft.sourcePort);
+      }
+    }
+
+    function appendEdgePolyline(svg, edge, start, end) {
+      const geometry = getEdgeGeometry(edge, start, end);
+      const pointsString = geometry.points.map(point => `${point.x},${point.y}`).join(" ");
+
+      const visible = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+      visible.setAttribute("points", pointsString);
+      visible.setAttribute("class", `edge-visible${edge.edge === selectedEdgeKey ? " selected" : ""}`);
+      visible.setAttribute("marker-end", "url(#arrowHead)");
+      svg.appendChild(visible);
+
+      const hit = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+      hit.setAttribute("points", pointsString);
+      hit.setAttribute("class", "edge-hit");
+      hit.dataset.edge = edge.edge;
+      hit.addEventListener("mousedown", event => {
+        event.preventDefault();
+        event.stopPropagation();
+        selectedEdgeKey = edge.edge;
+        selectedNodeKey = null;
+        drawEdges();
+        renderPropertyPanel();
+      });
+      svg.appendChild(hit);
+
+      if (edge.condition) {
+        const labelPoint = getPolylineLabelPoint(geometry.points);
+        const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        text.setAttribute("x", labelPoint.x);
+        text.setAttribute("y", labelPoint.y - 7);
+        text.setAttribute("font-size", "12");
+        text.setAttribute("font-weight", "700");
+        text.setAttribute("text-anchor", "middle");
+        text.setAttribute("paint-order", "stroke");
+        text.setAttribute("stroke", "#fff");
+        text.setAttribute("stroke-width", "4");
+        text.setAttribute("stroke-linejoin", "round");
+        text.setAttribute("fill", "#111827");
+        text.setAttribute("pointer-events", "none");
+        text.textContent = edge.condition;
+        svg.appendChild(text);
+      }
+
+      if (edge.edge === selectedEdgeKey && (edge.line_type || "orthogonal") === "orthogonal") {
+        for (const handle of geometry.handles) {
+          const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+          rect.setAttribute("x", handle.x - 5);
+          rect.setAttribute("y", handle.y - 5);
+          rect.setAttribute("width", "10");
+          rect.setAttribute("height", "10");
+          rect.setAttribute("rx", "2");
+          rect.setAttribute("class", `edge-route-handle ${handle.cursorClass}`);
+          rect.dataset.edge = edge.edge;
+          rect.dataset.handle = handle.kind;
+          rect.addEventListener("mousedown", beginEdgeRouteDrag);
+          svg.appendChild(rect);
+        }
+      }
+    }
+
+    function appendTemporaryEdge(svg, start, end, sourcePort) {
+      const points = getTemporaryOrthogonalPoints(start, end, sourcePort);
+      const polyline = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+      polyline.setAttribute("points", points.map(point => `${point.x},${point.y}`).join(" "));
+      polyline.setAttribute("fill", "none");
+      polyline.setAttribute("stroke", "#60a5fa");
+      polyline.setAttribute("stroke-width", "2");
+      polyline.setAttribute("stroke-dasharray", "6 5");
+      polyline.setAttribute("stroke-linejoin", "round");
+      polyline.setAttribute("pointer-events", "none");
+      svg.appendChild(polyline);
+    }
+
+    function getTemporaryOrthogonalPoints(start, end, sourcePort) {
+      if (isVerticalPort(sourcePort)) {
+        return compactPoints([
+          start,
+          { x: start.x, y: end.y },
+          end
+        ]);
+      }
+
+      return compactPoints([
+        start,
+        { x: end.x, y: start.y },
+        end
+      ]);
+    }
+
+    function getEdgeGeometry(edge, start, end) {
+      if ((edge?.line_type || "orthogonal") === "straight") {
+        return {
+          mode: "straight",
+          points: [start, end],
+          handles: []
+        };
+      }
+      return getOrthogonalGeometry(edge, start, end);
+    }
+
+    function getOrthogonalGeometry(edge, start, end) {
+      const sourceVertical = isVerticalPort(edge.sourcePort);
+      const targetVertical = isVerticalPort(edge.targetPort);
+
+      if (sourceVertical && targetVertical) {
+        const defaultY = (start.y + end.y) / 2;
+        const y = Number.isFinite(edge.route?.y) ? edge.route.y : defaultY;
+        return {
+          mode: "vertical-pair",
+          points: compactPoints([
+            start,
+            { x: start.x, y },
+            { x: end.x, y },
+            end
+          ]),
+          handles: [
+            { x: start.x, y, kind: "axis-y", cursorClass: "axis-y" },
+            { x: end.x, y, kind: "axis-y", cursorClass: "axis-y" }
+          ]
+        };
+      }
+
+      if (!sourceVertical && !targetVertical) {
+        const defaultX = (start.x + end.x) / 2;
+        const x = Number.isFinite(edge.route?.x) ? edge.route.x : defaultX;
+        return {
+          mode: "horizontal-pair",
+          points: compactPoints([
+            start,
+            { x, y: start.y },
+            { x, y: end.y },
+            end
+          ]),
+          handles: [
+            { x, y: start.y, kind: "axis-x", cursorClass: "axis-x" },
+            { x, y: end.y, kind: "axis-x", cursorClass: "axis-x" }
+          ]
+        };
+      }
+
+      const defaultX = (start.x + end.x) / 2;
+      const defaultY = (start.y + end.y) / 2;
+      const x = Number.isFinite(edge.route?.x) ? edge.route.x : defaultX;
+      const y = Number.isFinite(edge.route?.y) ? edge.route.y : defaultY;
+
+      if (sourceVertical) {
+        return {
+          mode: "mixed",
+          points: compactPoints([
+            start,
+            { x: start.x, y },
+            { x, y },
+            { x, y: end.y },
+            end
+          ]),
+          handles: [
+            { x, y, kind: "free", cursorClass: "free" }
+          ]
+        };
+      }
+
+      return {
+        mode: "mixed",
+        points: compactPoints([
+          start,
+          { x, y: start.y },
+          { x, y },
+          { x: end.x, y },
+          end
+        ]),
+        handles: [
+          { x, y, kind: "free", cursorClass: "free" }
+        ]
+      };
+    }
+
+    function compactPoints(points) {
+      const result = [];
+      for (const point of points) {
+        const prev = result[result.length - 1];
+        if (!prev || Math.abs(prev.x - point.x) > 0.01 || Math.abs(prev.y - point.y) > 0.01) {
+          result.push(point);
+        }
+      }
+      return result;
+    }
+
+    function isVerticalPort(port) {
+      return port === "top" || port === "bottom";
+    }
+
+    function beginEdgeRouteDrag(event) {
+      if (event.button !== 0) return;
+      event.preventDefault();
+      event.stopPropagation();
+
+      const edgeKey = event.currentTarget.dataset.edge;
+      const handleKind = event.currentTarget.dataset.handle;
+      const edge = edges.find(item => item.edge === edgeKey);
+      if (!edge) return;
+
+      selectedEdgeKey = edgeKey;
+      selectedNodeKey = null;
+
+      const start = getPortPoint(edge.source, edge.sourcePort);
+      const end = getPortPoint(edge.target, edge.targetPort);
+      if (!start || !end) return;
+
+      const geometry = getOrthogonalGeometry(edge, start, end);
+      if (!edge.route) edge.route = {};
+
+      function onMouseMove(moveEvent) {
+        const pointer = getWorkspacePointer(moveEvent.clientX, moveEvent.clientY);
+
+        if (handleKind === "axis-y" || geometry.mode === "vertical-pair") {
+          edge.route.y = Math.max(0, Math.min(WORKSPACE_HEIGHT, pointer.y));
+        } else if (handleKind === "axis-x" || geometry.mode === "horizontal-pair") {
+          edge.route.x = Math.max(0, Math.min(WORKSPACE_WIDTH, pointer.x));
+        } else {
+          edge.route.x = Math.max(0, Math.min(WORKSPACE_WIDTH, pointer.x));
+          edge.route.y = Math.max(0, Math.min(WORKSPACE_HEIGHT, pointer.y));
+        }
+
+        drawEdges();
+      }
+
+      function onMouseUp() {
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
+        renderPropertyPanel();
+      }
+
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
+    }
+
+    function resetSelectedEdgeRoute() {
+      const edge = edges.find(item => item.edge === selectedEdgeKey);
+      if (!edge) return;
+      edge.route = null;
+      drawEdges();
+    }
+
+    function getPolylineLabelPoint(points) {
+      let best = null;
+      let bestLength = -1;
+
+      for (let index = 0; index < points.length - 1; index += 1) {
+        const a = points[index];
+        const b = points[index + 1];
+        const length = Math.hypot(b.x - a.x, b.y - a.y);
+        if (length > bestLength) {
+          bestLength = length;
+          best = {
+            x: (a.x + b.x) / 2,
+            y: (a.y + b.y) / 2
+          };
+        }
+      }
+
+      return best || points[0];
+    }
+
+    function getWorkspacePointer(clientX, clientY) {
+      const rect = document.getElementById("workspace").getBoundingClientRect();
+      return {
+        x: (clientX - rect.left) / zoomLevel,
+        y: (clientY - rect.top) / zoomLevel
+      };
+    }
+
+    function getPortPoint(nodeKey, port) {
+      const node = nodes.find(item => item.node === nodeKey);
+      if (!node) return null;
+
+      const size = nodeSizes[node.node_type];
+      const left = node.x;
+      const top = node.y;
+      const right = left + size.width;
+      const bottom = top + size.height;
+
+      if (port === "top") return { x: left + size.width / 2, y: top };
+      if (port === "right") return { x: right, y: top + size.height / 2 };
+      if (port === "bottom") return { x: left + size.width / 2, y: bottom };
+      return { x: left, y: top + size.height / 2 };
+    }
+
+    function renderPropertyPanel() {
+      const panel = document.getElementById("propertyPanel");
+      const node = nodes.find(item => item.node === selectedNodeKey);
+      const selectedEdge = edges.find(item => item.edge === selectedEdgeKey);
+
+      if (!node && selectedEdge) {
+        const sourceNode = nodes.find(item => item.node === selectedEdge.source);
+        panel.innerHTML = `
+          <div class="property-group">
+            <label>Connection</label>
+            <div class="connection-info">
+              ${escapeHtml(selectedEdge.source)} → ${escapeHtml(selectedEdge.target)}
+            </div>
+          </div>
+          <div class="property-group">
+            <label>Line Type</label>
+            <select onchange="updateSelectedEdgeLineType(this.value)">
+              <option value="orthogonal" ${(selectedEdge.line_type || "orthogonal") === "orthogonal" ? "selected" : ""}>꺾은 선</option>
+              <option value="straight" ${(selectedEdge.line_type || "orthogonal") === "straight" ? "selected" : ""}>직선</option>
+            </select>
+          </div>
+          ${sourceNode?.node_type === "decision" ? `
+            <div class="property-group">
+              <label>Condition</label>
+              <input
+                value="${escapeHtml(selectedEdge.condition || "")}"
+                oninput="updateBranchCondition('${escapeJs(selectedEdge.edge)}', this.value)"
+              />
+            </div>
+          ` : ""}
+          <div class="button-row">
+            ${(selectedEdge.line_type || "orthogonal") === "orthogonal"
+              ? '<button class="light-button" onclick="resetSelectedEdgeRoute()">꺾임 초기화</button>'
+              : ''}
+            <button class="danger-button" onclick="deleteEdge('${escapeJs(selectedEdge.edge)}')">선 삭제</button>
+          </div>
+          <p class="muted">
+            ${(selectedEdge.line_type || "orthogonal") === "orthogonal"
+              ? "파란 사각형 조절점을 드래그하면 꺾임 위치를 조절할 수 있습니다."
+              : "직선은 시작점과 끝점을 바로 연결합니다."}
+          </p>
+        `;
+        return;
+      }
+
+      if (!node) {
+        panel.innerHTML = '<p class="muted">노드 또는 연결선을 선택하세요.</p>';
+        return;
+      }
+
+      const nodeNumber = extractNodeNumber(node.node, node.node_type) || "";
+      let html = `
+        <div class="property-group">
+          <label>Node Number</label>
+          <div class="node-number-editor">
+            <span class="node-number-prefix">${escapeHtml(node.node_type)}_</span>
+            <input
+              type="number"
+              min="1"
+              step="1"
+              inputmode="numeric"
+              value="${escapeHtml(nodeNumber)}"
+              onchange="updateNodeNumber(this.value)"
+            />
+          </div>
+          <div class="node-key-preview">Node: <code>${escapeHtml(node.node)}</code></div>
+        </div>
+        <div class="property-group">
+          <label>Node Type</label>
+          <input value="${escapeHtml(node.node_type)}" disabled />
+        </div>
+        ${node.node_type === "seq" ? `
+          <div class="property-group">
+            <label>SEQ Text Size <span class="muted">(각 영역 개별 조절)</span></label>
+            <div class="seq-font-size-grid">
+              ${renderSeqFontSizeField(node, "number", "Number")}
+              ${renderSeqFontSizeField(node, "role_owner", "Role Owner")}
+              
+              ${renderSeqFontSizeField(node, "action", "Action 내용")}
+              ${renderSeqFontSizeField(node, "system", "System")}
+              ${renderSeqFontSizeField(node, "manual", "Manual")}
+            </div>
+          </div>
+        ` : `
+          <div class="property-group">
+            <label>Font Size <span class="muted">(박스 표시 글자)</span></label>
+            <div class="font-size-row">
+              <input
+                type="range"
+                min="9"
+                max="36"
+                step="1"
+                value="${getNodeFontSize(node)}"
+                oninput="updateSelectedNodeFontSize(this.value); this.nextElementSibling.value = this.value"
+              />
+              <input
+                type="number"
+                min="9"
+                max="36"
+                step="1"
+                value="${getNodeFontSize(node)}"
+                oninput="updateSelectedNodeFontSize(this.value); this.previousElementSibling.value = this.value"
+              />
+            </div>
+          </div>
+        `}
+      `;
+
+      if (node.node_type === "start" || node.node_type === "end") {
+        html += renderNameField(node, "Name");
+        html += renderNextNodePanel(node);
+      }
+
+      if (node.node_type === "seq") {
+        html += `
+          <div class="property-group">
+            <label>Role Owner</label>
+            <textarea class="compact-textarea" rows="2" oninput="updateSelectedNode('role_owner', this.value)">${escapeHtml(node.role_owner || "")}</textarea>
+          </div>
+          <div class="property-group">
+            <label>Action</label>
+            <textarea class="compact-textarea" rows="3" oninput="updateSelectedNode('action', this.value)">${escapeHtml(node.action || "")}</textarea>
+          </div>
+          <div class="property-group">
+            <label>Description</label>
+            <textarea oninput="updateSelectedNode('description', this.value)">${escapeHtml(node.description || "")}</textarea>
+          </div>
+          <h3>System</h3>
+          <div id="systemRows">${renderSystemRows(node)}</div>
+          <button class="inline-button light-button" onclick="addSystemRow()">+ 시스템 추가</button>
+          <div class="property-group" style="margin-top:12px;">
+            <label>Manual <span class="muted">(한 줄에 한 작업)</span></label>
+            <textarea oninput="updateManual(this.value)">${escapeHtml((node.manual || []).join("\n"))}</textarea>
+          </div>
+        `;
+        html += renderNextNodePanel(node);
+      }
+
+      if (node.node_type === "decision") {
+        html += `
+          <div class="property-group">
+            <label>Name</label>
+            <textarea class="compact-textarea" rows="3" oninput="updateSelectedNode('action', this.value)">${escapeHtml(node.action || "")}</textarea>
+          </div>
+          <div class="property-group">
+            <label>Role Owner</label>
+            <textarea class="compact-textarea" rows="2" oninput="updateSelectedNode('role_owner', this.value)">${escapeHtml(node.role_owner || "")}</textarea>
+          </div>
+          <div class="property-group">
+            <label>Description</label>
+            <textarea oninput="updateSelectedNode('description', this.value)">${escapeHtml(node.description || "")}</textarea>
+          </div>
+          <h3>Branches</h3>
+          ${renderBranchRows(node)}
+          <p class="muted">새 Branch는 Decision 연결점에서 다른 노드로 선을 그리면 추가됩니다.</p>
+        `;
+      }
+
+      if (node.node_type === "sop") {
+        // SOP ID 는 자유 입력이지만 라이브러리 목록(datalist)에서 고를 수도 있다. 이름은 연결된 문서가 있으면 그 문서 이름을 따른다.
+        const ref = resolveSopRef(node);
+        const nameLocked = ref.state === "linked" || ref.state === "retired";
+        html += `
+          <div class="property-group">
+            <label>SOP ID</label>
+            <input id="sopRefId" list="sopLibraryList" autocomplete="off" placeholder="SOP 번호 입력 또는 목록에서 선택" value="${escapeHtml(node.sop_id || "")}" oninput="updateSopRef(this.value)" />
+            ${renderSopLibraryDatalist()}
+            ${renderSopRefStatusHtml(node)}
+          </div>
+          <div class="property-group">
+            <label>Name${nameLocked ? ' <span class="muted">(연결된 문서의 이름을 따릅니다)</span>' : ""}</label>
+            <textarea id="sopRefName" class="compact-textarea" rows="3" ${nameLocked ? "readonly" : ""} oninput="updateSelectedNode('sop_name', this.value)">${escapeHtml(ref.sop_name || "")}</textarea>
+          </div>
+          <div class="property-group">
+            <label>Description</label>
+            <textarea oninput="updateSelectedNode('description', this.value)">${escapeHtml(node.description || "")}</textarea>
+          </div>
+        `;
+        html += renderNextNodePanel(node);
+      }
+
+      html += `
+        <button class="danger-button" style="width:100%; padding:10px; margin-top:14px;" onclick="deleteSelectedNode()">
+          선택 노드 삭제
+        </button>
+      `;
+
+      panel.innerHTML = html;
+    }
+
+    function renderNameField(node, label) {
+      return `
+        <div class="property-group">
+          <label>${label}</label>
+          <textarea
+            class="compact-textarea"
+            rows="3"
+            oninput="updateSelectedNode('name', this.value)"
+            ${node.node_type === "end" ? "disabled" : ""}
+          >${escapeHtml(node.name || "")}</textarea>
+        </div>
+      `;
+    }
+
+    function renderNextNodePanel(node) {
+      const outgoing = edges.filter(edge => edge.source === node.node);
+      const nextNode = outgoing[0]?.target || "연결되지 않음";
+      return `
+        <div class="property-group">
+          <label>Next Node</label>
+          <div class="connection-info">
+            ${escapeHtml(nextNode)}
+            ${outgoing.length ? '<button class="small-button danger-button" style="margin-left:8px;" onclick="disconnectOutgoing()">연결 삭제</button>' : ""}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderSystemRows(node) {
+      const systems = node.systems || [];
+      if (systems.length === 0) {
+        return '<p class="muted">등록된 시스템이 없습니다.</p>';
+      }
+
+      return systems.map((system, index) => `
+        <div class="system-row">
+          <div class="system-row-grid">
+            <input placeholder="시스템명" value="${escapeHtml(system.name || "")}" oninput="updateSystemName(${index}, this.value)" />
+            <input placeholder="메뉴명1, 메뉴명2" value="${escapeHtml((system.menus || []).join(", "))}" oninput="updateSystemMenus(${index}, this.value)" />
+            <button class="row-delete" onclick="deleteSystemRow(${index})">×</button>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function renderBranchRows(node) {
+      const outgoing = edges.filter(edge => edge.source === node.node);
+      if (outgoing.length === 0) {
+        return '<p class="muted">연결된 Branch가 없습니다.</p>';
+      }
+
+      return outgoing.map(edge => `
+        <div class="branch-row">
+          <div class="branch-row-grid">
+            <input value="${escapeHtml(edge.condition || "")}" oninput="updateBranchCondition('${escapeJs(edge.edge)}', this.value)" />
+            <input value="${escapeHtml(edge.target)}" disabled />
+            <button class="row-delete" onclick="deleteEdge('${escapeJs(edge.edge)}')">×</button>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function updateNodeNumber(rawValue) {
+      const node = nodes.find(item => item.node === selectedNodeKey);
+      if (!node) return;
+
+      const value = String(rawValue ?? "").trim();
+      if (!/^[1-9]\d*$/.test(value)) {
+        alert("노드 번호는 1 이상의 정수로 입력하세요.");
+        renderPropertyPanel();
+        return;
+      }
+
+      const number = Number(value);
+      if (!Number.isSafeInteger(number)) {
+        alert("노드 번호가 너무 큽니다.");
+        renderPropertyPanel();
+        return;
+      }
+
+      const oldNodeKey = node.node;
+      const newNodeKey = `${node.node_type}_${number}`;
+
+      if (newNodeKey === oldNodeKey) return;
+
+      const duplicated = nodes.some(item => item !== node && item.node === newNodeKey);
+      if (duplicated) {
+        alert(`${newNodeKey} 노드가 이미 존재합니다.`);
+        renderPropertyPanel();
+        return;
+      }
+
+      node.node = newNodeKey;
+
+      for (const edge of edges) {
+        if (edge.source === oldNodeKey) edge.source = newNodeKey;
+        if (edge.target === oldNodeKey) edge.target = newNodeKey;
+      }
+
+      selectedNodeKey = newNodeKey;
+      syncCountersFromNodes();
+      render();
+    }
+
+    function renderSeqFontSizeField(node, field, label) {
+      return `
+        <div class="seq-font-size-field">
+          <label>${label}</label>
+          <input
+            type="number"
+            min="8"
+            max="40"
+            step="1"
+            value="${getSeqFontSize(node, field)}"
+            oninput="updateSelectedSeqFontSize('${field}', this.value)"
+          />
+        </div>
+      `;
+    }
+
+    function updateSelectedSeqFontSize(field, rawValue) {
+      const node = nodes.find(item => item.node === selectedNodeKey);
+      if (!node || node.node_type !== "seq" || !(field in seqFontDefaults)) return;
+
+      const parsed = Number(rawValue);
+      if (!Number.isFinite(parsed)) return;
+
+      ensureSeqFontSizes(node);
+      node.seq_font_sizes[field] = Math.max(8, Math.min(40, Math.round(parsed)));
+
+      if (field === "action") {
+        node.font_size = node.seq_font_sizes[field];
+      }
+
+      refreshSelectedNodeVisual(node);
+    }
+
+    function updateSelectedEdgeLineType(value) {
+      const edge = edges.find(item => item.edge === selectedEdgeKey);
+      if (!edge) return;
+
+      edge.line_type = value === "straight" ? "straight" : "orthogonal";
+      if (edge.line_type === "straight") {
+        edge.route = null;
+      }
+
+      drawEdges();
+      renderPropertyPanel();
+    }
+
+    function updateSelectedNodeFontSize(rawValue) {
+      const node = nodes.find(item => item.node === selectedNodeKey);
+      if (!node) return;
+
+      const parsed = Number(rawValue);
+      if (!Number.isFinite(parsed)) return;
+
+      node.font_size = Math.max(9, Math.min(36, Math.round(parsed)));
+      refreshSelectedNodeVisual(node);
+    }
+
+    function updateSelectedNode(field, value) {
+      const node = nodes.find(item => item.node === selectedNodeKey);
+      if (!node) return;
+      node[field] = value;
+      refreshSelectedNodeVisual(node);
+    }
+
+    function refreshSelectedNodeVisual(node) {
+      const element = document.querySelector(`.flow-node[data-node="${cssEscape(node.node)}"]`);
+      if (!element) return;
+      const shape = element.querySelector(".node-shape");
+      shape.innerHTML = renderNodeShapeHtml(node);
+      applySopRefClass(element, node);
+    }
+
+    function addSystemRow() {
+      const node = nodes.find(item => item.node === selectedNodeKey && item.node_type === "seq");
+      if (!node) return;
+      node.systems = node.systems || [];
+      node.systems.push({ name: "", menus: [] });
+      renderPropertyPanel();
+      refreshSelectedNodeVisual(node);
+    }
+
+    function updateSystemName(index, value) {
+      const node = nodes.find(item => item.node === selectedNodeKey && item.node_type === "seq");
+      if (!node?.systems?.[index]) return;
+      node.systems[index].name = value;
+      refreshSelectedNodeVisual(node);
+    }
+
+    function updateSystemMenus(index, value) {
+      const node = nodes.find(item => item.node === selectedNodeKey && item.node_type === "seq");
+      if (!node?.systems?.[index]) return;
+      node.systems[index].menus = value.split(",").map(item => item.trim()).filter(Boolean);
+      refreshSelectedNodeVisual(node);
+    }
+
+    function deleteSystemRow(index) {
+      const node = nodes.find(item => item.node === selectedNodeKey && item.node_type === "seq");
+      if (!node?.systems) return;
+      node.systems.splice(index, 1);
+      renderPropertyPanel();
+      refreshSelectedNodeVisual(node);
+    }
+
+    function updateManual(value) {
+      const node = nodes.find(item => item.node === selectedNodeKey && item.node_type === "seq");
+      if (!node) return;
+      node.manual = value.split("\n").map(item => item.trim()).filter(Boolean);
+      refreshSelectedNodeVisual(node);
+    }
+
+    function updateBranchCondition(edgeKey, value) {
+      const edge = edges.find(item => item.edge === edgeKey);
+      if (!edge) return;
+      edge.condition = value;
+      drawEdges();
+    }
+
+    function deleteEdge(edgeKey) {
+      edges = edges.filter(edge => edge.edge !== edgeKey);
+      if (selectedEdgeKey === edgeKey) selectedEdgeKey = null;
+      render();
+    }
+
+    function disconnectOutgoing() {
+      if (!selectedNodeKey) return;
+      const removed = new Set(edges.filter(edge => edge.source === selectedNodeKey).map(edge => edge.edge));
+      edges = edges.filter(edge => edge.source !== selectedNodeKey);
+      if (removed.has(selectedEdgeKey)) selectedEdgeKey = null;
+      render();
+    }
+
+    function deleteSelectedNode() {
+      if (!selectedNodeKey) return;
+      nodes = nodes.filter(node => node.node !== selectedNodeKey);
+      edges = edges.filter(edge => edge.source !== selectedNodeKey && edge.target !== selectedNodeKey);
+      selectedNodeKey = null;
+      selectedEdgeKey = null;
+      render();
+    }
+
+    function convertExecution(node) {
+      const execution = {};
+
+      for (const system of node.systems || []) {
+        const name = (system.name || "").trim();
+        if (!name) continue;
+        execution[name] = (system.menus || []).filter(Boolean);
+      }
+
+      if ((node.manual || []).length > 0) {
+        execution.manual = [...node.manual];
+      }
+
+      return execution;
+    }
+
+    function applyNodeSidebarState() {
+      const toggle = document.getElementById("sidebarToggle");
+      document.body.classList.toggle("sidebar-collapsed", nodeSidebarCollapsed);
+      if (toggle) {
+        toggle.setAttribute("aria-expanded", String(!nodeSidebarCollapsed));
+        toggle.setAttribute("aria-label", nodeSidebarCollapsed ? "노드 추가 패널 펼치기" : "노드 추가 패널 접기");
+        toggle.textContent = nodeSidebarCollapsed ? "\u25B8" : "\u25C2";
+        toggle.title = nodeSidebarCollapsed ? "노드 추가 패널 펼치기" : "노드 추가 패널 접기";
+      }
+    }
+
+    function toggleNodeSidebar() {
+      nodeSidebarCollapsed = !nodeSidebarCollapsed;
+      applyNodeSidebarState();
+    }
+
+    function applyPropertyPanelState() {
+      const toggle = document.getElementById("panelToggle");
+      document.body.classList.toggle("panel-collapsed", propertyPanelCollapsed);
+      if (toggle) {
+        toggle.setAttribute("aria-expanded", String(!propertyPanelCollapsed));
+        toggle.setAttribute("aria-label", propertyPanelCollapsed ? "속성 패널 펼치기" : "속성 패널 접기");
+        toggle.textContent = propertyPanelCollapsed ? "\u25C2" : "\u25B8";
+        toggle.title = propertyPanelCollapsed ? "입력창 펼치기" : "입력창 접기";
+      }
+    }
+
+    function togglePropertyPanel() {
+      propertyPanelCollapsed = !propertyPanelCollapsed;
+      applyPropertyPanelState();
+    }
+
+    function generateJson() {
+      refreshSopRefsFromLibrary();   // 내보내기 직전, SOP 상자의 번호·이름을 라이브러리 기준 최신값으로
+      const convertedNodes = nodes.map(node => {
+        const outgoing = edges.filter(edge => edge.source === node.node);
+
+        if (node.node_type === "start") {
+          return {
+            node: node.node,
+            node_type: "start",
+            name: node.name,
+            next_node: outgoing[0]?.target || null
+          };
+        }
+
+        if (node.node_type === "end") {
+          return {
+            node: node.node,
+            node_type: "end",
+            name: node.name || "End",
+            next_node: null
+          };
+        }
+
+        if (node.node_type === "seq") {
+          return {
+            node: node.node,
+            node_type: "seq",
+            role_owner: node.role_owner,
+            action: node.action,
+            description: node.description,
+            execution: convertExecution(node),
+            next_node: outgoing[0]?.target || null
+          };
+        }
+
+        if (node.node_type === "decision") {
+          return {
+            node: node.node,
+            node_type: "decision",
+            role_owner: node.role_owner,
+            action: node.action,
+            description: node.description,
+            branches: outgoing.map(edge => ({
+              condition: edge.condition,
+              next_node: edge.target
+            }))
+          };
+        }
+
+        return {
+          node: node.node,
+          node_type: "sop",
+          sop_id: node.sop_id,
+          sop_name: node.sop_name,
+          ref_document_id: node.ref_document_id || null,
+          description: node.description,
+          next_node: outgoing[0]?.target || null
+        };
+      });
+
+      const result = {
+        sop_id: sopInfo.sop_id,
+        sop_name: sopInfo.sop_name,
+        description: sopInfo.description,
+        nodes: convertedNodes
+      };
+      const json = JSON.stringify(result, null, 2);
+      document.getElementById("jsonOutput").value = json;
+      return json;
+    }
+
+    function downloadJson() {
+      const json = generateJson();
+      const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "sop-flow.json";
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // 프로젝트 상태를 하나의 평범한 객체로 모은다. localStorage 저장과
+    // 바깥 문서의 JSON 내보내기가 같은 표현을 쓰도록 하기 위한 단일 지점.
+    function buildProject() {
+      refreshSopRefsFromLibrary();   // 내보내기 직전, SOP 상자의 번호·이름을 라이브러리 기준 최신값으로
+      return {
+        sopInfo,
+        nodes,
+        edges,
+        counters,
+        ui: {
+          zoomLevel,
+          panelWidth: getPanelWidth(),
+          sopInfoCollapsed,
+          nodeSidebarCollapsed,
+          propertyPanelCollapsed,
+          gridVisible
+        }
+      };
+    }
+
+    function applyProject(project) {
+      sopInfo = {
+        sop_id: project.sopInfo?.sop_id || "",
+        sop_name: project.sopInfo?.sop_name || "",
+        description: project.sopInfo?.description || ""
+      };
+      sopInfoCollapsed = Boolean(project.ui?.sopInfoCollapsed);
+      nodeSidebarCollapsed = Boolean(project.ui?.nodeSidebarCollapsed);
+      propertyPanelCollapsed = Boolean(project.ui?.propertyPanelCollapsed);
+      nodes = project.nodes || [];
+      edges = project.edges || [];
+      // 예전(2200x1500) 캔버스에서 저장된 노드가 16:9 페이지 밖에 있으면 안쪽으로 당긴다.
+      for (const node of nodes) {
+        const size = nodeSizes[node.node_type];
+        if (!size) continue;
+        node.x = Math.max(0, Math.min(WORKSPACE_WIDTH - size.width, Number(node.x) || 0));
+        node.y = Math.max(0, Math.min(WORKSPACE_HEIGHT - size.height, Number(node.y) || 0));
+        // 예전 문서의 SOP 상자에는 ref_document_id 칸이 없다 → null(연결 없음)로 채워 둔다
+        if (node.node_type === "sop" && !node.ref_document_id) node.ref_document_id = null;
+      }
+      Object.keys(counters).forEach(key => { counters[key] = 0; });
+      Object.assign(counters, project.counters || {});
+      syncCountersFromNodes();
+      zoomLevel = project.ui?.zoomLevel || 1;
+      gridVisible = project.ui?.gridVisible !== false;
+      if (project.ui?.panelWidth) setPanelWidth(project.ui.panelWidth);
+      selectedNodeKey = null;
+      selectedEdgeKey = null;
+      connectionDraft = null;
+      renderSopInfoPanel();
+      applyNodeSidebarState();
+      applyPropertyPanelState();
+      applyZoom();
+      applyGridState();
+      render();
+    }
+
+    function clearAll() {
+      if (!confirm("전체 작업을 삭제할까요?")) return;
+      sopInfo = {
+        sop_id: "",
+        sop_name: "",
+        description: ""
+      };
+      sopInfoCollapsed = false;
+      nodes = [];
+      edges = [];
+      selectedNodeKey = null;
+      selectedEdgeKey = null;
+      connectionDraft = null;
+      gridVisible = true;
+      Object.keys(counters).forEach(key => { counters[key] = 0; });
+      document.getElementById("jsonOutput").value = "";
+      renderSopInfoPanel();
+      applyGridState();
+      render();
+    }
+
+    function applyGridState() {
+      const workspace = document.getElementById("workspace");
+      const button = document.getElementById("gridToggleButton");
+      workspace.classList.toggle("grid-hidden", !gridVisible);
+      if (button) {
+        button.textContent = gridVisible ? "격자 ✓" : "격자 ✕";
+        button.title = gridVisible ? "배경 격자선 숨기기" : "배경 격자선 보이기";
+      }
+    }
+
+    function toggleGrid() {
+      gridVisible = !gridVisible;
+      applyGridState();
+    }
+
+    function exportFlowImage() {
+      if (nodes.length === 0) {
+        alert("Export할 노드가 없습니다.");
+        return;
+      }
+
+      try {
+        // PNG는 항상 16:9 페이지 전체(1920x1080)를 2배 해상도(3840x2160)로 내보낸다.
+        // 내용에 따라 크기가 달라지지 않으므로 PPT 슬라이드에 그대로 넣을 수 있다.
+        const minX = 0;
+        const minY = 0;
+        const width = WORKSPACE_WIDTH;
+        const height = WORKSPACE_HEIGHT;
+        const scale = 2;
+
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.ceil(width * scale);
+        canvas.height = Math.ceil(height * scale);
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          alert("이미지 생성에 실패했습니다.");
+          return;
+        }
+
+        ctx.scale(scale, scale);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, width, height);
+
+        if (gridVisible) {
+          drawExportGrid(ctx, minX, minY, width, height);
+        }
+
+        for (const edge of edges) {
+          drawExportEdge(ctx, edge, minX, minY);
+        }
+
+        for (const node of nodes) {
+          drawExportNode(ctx, node, minX, minY);
+        }
+
+        // 페이지 외곽 경계선
+        ctx.strokeStyle = "#334155";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(1, 1, width - 2, height - 2);
+
+        canvas.toBlob(pngBlob => {
+          if (!pngBlob) {
+            alert("이미지 생성에 실패했습니다.");
+            return;
+          }
+
+          const downloadUrl = URL.createObjectURL(pngBlob);
+          const link = document.createElement("a");
+          const baseName = sanitizeFileName(
+            sopInfo.sop_id || sopInfo.sop_name || "etch-sop-flow"
+          );
+
+          link.href = downloadUrl;
+          link.download = `${baseName}.png`;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+
+          setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+        }, "image/png");
+      } catch (error) {
+        console.error("PNG Export error:", error);
+        alert("이미지 생성에 실패했습니다.");
+      }
+    }
+
+    function drawExportGrid(ctx, minX, minY, width, height) {
+      const gridSize = 20;
+      const offsetX = ((-minX % gridSize) + gridSize) % gridSize;
+      const offsetY = ((-minY % gridSize) + gridSize) % gridSize;
+
+      ctx.save();
+      ctx.strokeStyle = "#e5e7eb";
+      ctx.lineWidth = 1;
+
+      for (let x = offsetX; x <= width; x += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+      }
+
+      for (let y = offsetY; y <= height; y += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    }
+
+    function drawExportEdge(ctx, edge, minX, minY) {
+      const start = getPortPoint(edge.source, edge.sourcePort);
+      const end = getPortPoint(edge.target, edge.targetPort);
+      if (!start || !end) return;
+
+      const geometry = getEdgeGeometry(edge, start, end);
+      const points = geometry.points.map(point => ({
+        x: point.x - minX,
+        y: point.y - minY
+      }));
+
+      if (points.length < 2) return;
+
+      ctx.save();
+      ctx.strokeStyle = "#374151";
+      ctx.fillStyle = "#374151";
+      ctx.lineWidth = 2.2;
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let index = 1; index < points.length; index += 1) {
+        ctx.lineTo(points[index].x, points[index].y);
+      }
+      ctx.stroke();
+
+      const prev = points[points.length - 2];
+      const last = points[points.length - 1];
+      drawArrowHead(ctx, prev, last);
+
+      if (edge.condition) {
+        const label = getPolylineLabelPoint(points);
+        ctx.font = "700 12px Arial, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "bottom";
+
+        const text = String(edge.condition);
+        const textWidth = ctx.measureText(text).width;
+        ctx.fillStyle = "rgba(255,255,255,0.92)";
+        ctx.fillRect(label.x - textWidth / 2 - 4, label.y - 21, textWidth + 8, 17);
+
+        ctx.fillStyle = "#111827";
+        ctx.fillText(text, label.x, label.y - 5);
+      }
+
+      ctx.restore();
+    }
+
+    function drawArrowHead(ctx, from, to) {
+      const angle = Math.atan2(to.y - from.y, to.x - from.x);
+      const length = 10;
+      const wing = 5;
+
+      ctx.save();
+      ctx.translate(to.x, to.y);
+      ctx.rotate(angle);
+
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(-length, -wing);
+      ctx.lineTo(-length, wing);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    function drawExportNode(ctx, node, minX, minY) {
+      const size = nodeSizes[node.node_type];
+      const x = node.x - minX;
+      const y = node.y - minY;
+      const centerX = x + size.width / 2;
+      const centerY = y + size.height / 2;
+
+      ctx.save();
+      ctx.fillStyle = "#ffffff";
+      ctx.strokeStyle = "#111111";
+      ctx.lineWidth = 2;
+
+      if (node.node_type === "start" || node.node_type === "end") {
+        const radius = Math.min(size.width, size.height) / 2 - 2;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        drawCanvasWrappedText(
+          ctx,
+          getNodeDisplayName(node),
+          centerX,
+          centerY,
+          10,
+          4,
+          getNodeFontSize(node),
+          Math.max(13, Math.round(getNodeFontSize(node) * 1.24)),
+          "700"
+        );
+        ctx.restore();
+        return;
+      }
+
+      if (node.node_type === "decision") {
+        ctx.beginPath();
+        ctx.moveTo(centerX, y + 2);
+        ctx.lineTo(x + size.width - 2, centerY);
+        ctx.lineTo(centerX, y + size.height - 2);
+        ctx.lineTo(x + 2, centerY);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        drawCanvasWrappedText(
+          ctx,
+          getNodeDisplayName(node),
+          centerX,
+          centerY,
+          11,
+          5,
+          getNodeFontSize(node),
+          Math.max(12, Math.round(getNodeFontSize(node) * 1.28)),
+          "700"
+        );
+        ctx.restore();
+        return;
+      }
+
+      if (node.node_type === "sop") {
+        drawRoundRect(
+          ctx,
+          x + 1,
+          y + 1,
+          size.width - 2,
+          size.height - 2,
+          34
+        );
+        ctx.fill();
+        ctx.stroke();
+
+        drawCanvasWrappedText(
+          ctx,
+          getNodeDisplayName(node),
+          centerX,
+          centerY,
+          16,
+          4,
+          getNodeFontSize(node),
+          Math.max(13, Math.round(getNodeFontSize(node) * 1.24)),
+          "700"
+        );
+        ctx.restore();
+        return;
+      }
+
+      const number = node.node.split("_").pop();
+      const executionSummary = getExecutionSummary(node);
+      const topHeight = 34;
+      const actionHeight = 94;
+      const bottomY = y + topHeight + actionHeight;
+      const splitX = x + 58;
+
+      ctx.fillRect(x + 1, y + 1, size.width - 2, size.height - 2);
+      ctx.strokeRect(x + 1, y + 1, size.width - 2, size.height - 2);
+
+      ctx.beginPath();
+      ctx.moveTo(x, y + topHeight);
+      ctx.lineTo(x + size.width, y + topHeight);
+      ctx.moveTo(x, bottomY);
+      ctx.lineTo(x + size.width, bottomY);
+      ctx.moveTo(splitX, y);
+      ctx.lineTo(splitX, y + topHeight);
+      ctx.stroke();
+
+      ctx.fillStyle = "#111111";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = "700 13px Arial, sans-serif";
+      ctx.fillText(`# ${number}`, x + 29, y + 17);
+
+      drawCanvasWrappedText(
+        ctx,
+        node.role_owner || "",
+        splitX + (size.width - 58) / 2,
+        y + 17,
+        16,
+        2,
+        12,
+        15,
+        "700"
+      );
+
+      ctx.fillStyle = "#4b5563";
+      ctx.font = "700 12px Arial, sans-serif";
+      ctx.fillText("Action", centerX, y + topHeight + 16);
+
+      drawCanvasWrappedText(
+        ctx,
+        node.action || "",
+        centerX,
+        y + topHeight + 60,
+        18,
+        3,
+        getNodeFontSize(node),
+        Math.max(13, Math.round(getNodeFontSize(node) * 1.27)),
+        "700"
+      );
+
+      drawCanvasWrappedText(
+        ctx,
+        executionSummary || "System/Manual",
+        centerX,
+        y + size.height - 23,
+        30,
+        2,
+        11,
+        13,
+        "700"
+      );
+
+      ctx.restore();
+    }
+
+    function drawRoundRect(ctx, x, y, width, height, radius) {
+      const r = Math.min(radius, width / 2, height / 2);
+
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + width - r, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+      ctx.lineTo(x + width, y + height - r);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+      ctx.lineTo(x + r, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+    }
+
+    function drawCanvasWrappedText(
+      ctx,
+      text,
+      x,
+      centerY,
+      maxChars,
+      maxLines,
+      fontSize,
+      lineHeight,
+      fontWeight = "400"
+    ) {
+      const lines = wrapTextLines(String(text || ""), maxChars, maxLines);
+      const startY = centerY - ((lines.length - 1) * lineHeight) / 2;
+
+      ctx.save();
+      ctx.fillStyle = "#111111";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = `${fontWeight} ${fontSize}px Arial, sans-serif`;
+
+      lines.forEach((line, index) => {
+        ctx.fillText(line, x, startY + index * lineHeight);
+      });
+
+      ctx.restore();
+    }
+
+    function buildExportSvg(minX, minY, width, height) {
+      const parts = [];
+      parts.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`);
+      parts.push(`
+        <defs>
+          <marker id="exportArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L0,6 L9,3 z" fill="#374151"/>
+          </marker>
+          <pattern id="exportGrid" width="20" height="20" patternUnits="userSpaceOnUse">
+            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e5e7eb" stroke-width="1"/>
+          </pattern>
+        </defs>
+      `);
+      parts.push(`<rect x="0" y="0" width="${width}" height="${height}" fill="#fafafa"/>`);
+      if (gridVisible) {
+        const offsetX = ((-minX % 20) + 20) % 20;
+        const offsetY = ((-minY % 20) + 20) % 20;
+        parts.push(`<rect x="${-20 + offsetX}" y="${-20 + offsetY}" width="${width + 40}" height="${height + 40}" fill="url(#exportGrid)"/>`);
+      }
+
+      for (const edge of edges) {
+        const start = getPortPoint(edge.source, edge.sourcePort);
+        const end = getPortPoint(edge.target, edge.targetPort);
+        if (!start || !end) continue;
+        const geometry = getEdgeGeometry(edge, start, end);
+        const points = geometry.points
+          .map(point => `${point.x - minX},${point.y - minY}`)
+          .join(" ");
+        parts.push(`<polyline points="${points}" fill="none" stroke="#374151" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#exportArrow)"/>`);
+
+        if (edge.condition) {
+          const label = getPolylineLabelPoint(geometry.points);
+          parts.push(
+            `<text x="${label.x - minX}" y="${label.y - minY - 7}" font-family="Arial, Noto Sans KR, sans-serif" font-size="12" font-weight="700" text-anchor="middle" fill="#111827" stroke="#ffffff" stroke-width="4" paint-order="stroke">${escapeXml(edge.condition)}</text>`
+          );
+        }
+      }
+
+      for (const node of nodes) {
+        parts.push(buildExportNodeSvg(node, minX, minY));
+      }
+
+      parts.push("</svg>");
+      return parts.join("");
+    }
+
+    function buildExportNodeSvg(node, minX, minY) {
+      const size = nodeSizes[node.node_type];
+      const x = node.x - minX;
+      const y = node.y - minY;
+      const centerX = x + size.width / 2;
+      const centerY = y + size.height / 2;
+      const commonText = `font-family="Arial, Noto Sans KR, sans-serif" fill="#111111" text-anchor="middle"`;
+
+      if (node.node_type === "start" || node.node_type === "end") {
+        const radius = Math.min(size.width, size.height) / 2 - 2;
+        return [
+          `<circle cx="${centerX}" cy="${centerY}" r="${radius}" fill="#ffffff" stroke="#111111" stroke-width="2"/>`,
+          buildWrappedSvgText(getNodeDisplayName(node), centerX, centerY, 10, 4, getNodeFontSize(node), Math.max(13, Math.round(getNodeFontSize(node) * 1.24)), commonText)
+        ].join("");
+      }
+
+      if (node.node_type === "decision") {
+        const points = `${centerX},${y + 2} ${x + size.width - 2},${centerY} ${centerX},${y + size.height - 2} ${x + 2},${centerY}`;
+        return [
+          `<polygon points="${points}" fill="#ffffff" stroke="#111111" stroke-width="2"/>`,
+          buildWrappedSvgText(getNodeDisplayName(node), centerX, centerY, 11, 5, getNodeFontSize(node), Math.max(12, Math.round(getNodeFontSize(node) * 1.28)), `${commonText} font-weight="700"`)
+        ].join("");
+      }
+
+      if (node.node_type === "sop") {
+        return [
+          `<rect x="${x + 1}" y="${y + 1}" width="${size.width - 2}" height="${size.height - 2}" rx="34" fill="#ffffff" stroke="#111111" stroke-width="2"/>`,
+          buildWrappedSvgText(getNodeDisplayName(node), centerX, centerY, 16, 4, getNodeFontSize(node), Math.max(13, Math.round(getNodeFontSize(node) * 1.24)), `${commonText} font-weight="700"`)
+        ].join("");
+      }
+
+      const number = node.node.split("_").pop();
+      const executionSummary = getExecutionSummary(node);
+      const topHeight = 34;
+      const actionHeight = 94;
+      const bottomY = y + topHeight + actionHeight;
+      const splitX = x + 58;
+
+      return [
+        `<rect x="${x + 1}" y="${y + 1}" width="${size.width - 2}" height="${size.height - 2}" fill="#ffffff" stroke="#111111" stroke-width="2"/>`,
+        `<line x1="${x}" y1="${y + topHeight}" x2="${x + size.width}" y2="${y + topHeight}" stroke="#111111" stroke-width="2"/>`,
+        `<line x1="${x}" y1="${bottomY}" x2="${x + size.width}" y2="${bottomY}" stroke="#111111" stroke-width="2"/>`,
+        `<line x1="${splitX}" y1="${y}" x2="${splitX}" y2="${y + topHeight}" stroke="#111111" stroke-width="2"/>`,
+        `<text x="${x + 29}" y="${y + 22}" ${commonText} font-size="13" font-weight="700"># ${escapeXml(number)}</text>`,
+        buildWrappedSvgText(node.role_owner || "", splitX + (size.width - 58) / 2, y + 18, 16, 2, 12, 15, `${commonText} font-weight="700"`),
+        `<text x="${centerX}" y="${y + topHeight + 18}" font-family="Arial, Noto Sans KR, sans-serif" fill="#4b5563" text-anchor="middle" font-size="12" font-weight="700">Action</text>`,
+        buildWrappedSvgText(node.action || "", centerX, y + topHeight + 58, 18, 3, getNodeFontSize(node), Math.max(13, Math.round(getNodeFontSize(node) * 1.27)), `${commonText} font-weight="700"`),
+        buildWrappedSvgText(executionSummary || "System/Manual", centerX, y + size.height - 15, 30, 2, 11, 13, `${commonText} font-weight="700"`)
+      ].join("");
+    }
+
+    function buildWrappedSvgText(text, x, centerY, maxChars, maxLines, fontSize, lineHeight, attributes) {
+      const lines = wrapTextLines(String(text || ""), maxChars, maxLines);
+      const startY = centerY - ((lines.length - 1) * lineHeight) / 2;
+      const tspans = lines.map((line, index) =>
+        `<tspan x="${x}" y="${startY + index * lineHeight}">${escapeXml(line)}</tspan>`
+      ).join("");
+      return `<text ${attributes} font-size="${fontSize}">${tspans}</text>`;
+    }
+
+    function wrapTextLines(text, maxChars, maxLines) {
+      const normalized = String(text || "").replace(/\r\n?/g, "\n");
+      if (!normalized) return [""];
+
+      const lines = [];
+      const explicitLines = normalized.split("\n");
+
+      for (const explicitLine of explicitLines) {
+        if (lines.length >= maxLines) break;
+
+        let remaining = explicitLine.trimEnd();
+
+        if (remaining === "") {
+          lines.push("");
+          continue;
+        }
+
+        while (remaining && lines.length < maxLines) {
+          if (remaining.length <= maxChars) {
+            lines.push(remaining);
+            remaining = "";
+            break;
+          }
+
+          let cut = maxChars;
+          const candidate = remaining.slice(0, maxChars + 1);
+          const lastSpace = candidate.lastIndexOf(" ");
+
+          if (lastSpace >= Math.floor(maxChars * 0.45)) {
+            cut = lastSpace;
+          }
+
+          lines.push(remaining.slice(0, cut).trimEnd());
+          remaining = remaining.slice(cut).trimStart();
+        }
+
+        if (remaining && lines.length >= maxLines && lines.length > 0) {
+          let last = lines[lines.length - 1];
+          if (last.length >= maxChars) last = last.slice(0, Math.max(1, maxChars - 1));
+          lines[lines.length - 1] = `${last}…`;
+          break;
+        }
+      }
+
+      const consumedExplicitLines = lines.length;
+      if (explicitLines.length > 1 && consumedExplicitLines >= maxLines) {
+        const lastIndex = lines.length - 1;
+        if (lastIndex >= 0 && !lines[lastIndex].endsWith("…")) {
+          let last = lines[lastIndex];
+          if (last.length >= maxChars) last = last.slice(0, Math.max(1, maxChars - 1));
+          lines[lastIndex] = `${last}…`;
+        }
+      }
+
+      return lines.slice(0, maxLines);
+    }
+
+    function escapeXml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&apos;");
+    }
+
+    function sanitizeFileName(value) {
+      const cleaned = String(value || "etch-sop-flow")
+        .trim()
+        .replace(/[\\/:*?"<>|]+/g, "_")
+        .replace(/\s+/g, "_");
+      return cleaned || "etch-sop-flow";
+    }
+
+    function applyZoom() {
+      const workspace = document.getElementById("workspace");
+      const sizer = document.getElementById("workspaceSizer");
+      const label = document.getElementById("zoomLabel");
+
+      workspace.style.transform = `scale(${zoomLevel})`;
+      sizer.style.width = `${WORKSPACE_WIDTH * zoomLevel}px`;
+      sizer.style.height = `${WORKSPACE_HEIGHT * zoomLevel}px`;
+      label.textContent = `${Math.round(zoomLevel * 100)}%`;
+    }
+
+    function setZoom(nextZoom) {
+      const viewport = document.getElementById("canvasViewport");
+      const oldZoom = zoomLevel;
+      const centerX = (viewport.scrollLeft + viewport.clientWidth / 2) / oldZoom;
+      const centerY = (viewport.scrollTop + viewport.clientHeight / 2) / oldZoom;
+
+      zoomLevel = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, Number(nextZoom.toFixed(2))));
+      applyZoom();
+
+      viewport.scrollLeft = Math.max(0, centerX * zoomLevel - viewport.clientWidth / 2);
+      viewport.scrollTop = Math.max(0, centerY * zoomLevel - viewport.clientHeight / 2);
+    }
+
+    function changeZoom(delta) {
+      setZoom(zoomLevel + delta);
+    }
+
+    function resetZoom() {
+      setZoom(1);
+    }
+
+    // 16:9 페이지 전체가 캔버스 영역 안에 들어오도록 배율을 맞춘다.
+    function fitZoomToPage() {
+      const viewport = document.getElementById("canvasViewport");
+      if (!viewport || viewport.clientWidth < 100) { applyZoom(); return; }
+      const vw = Math.max(1, viewport.clientWidth - 24);
+      const vh = Math.max(1, viewport.clientHeight - 24);
+      setZoom(Math.min(vw / WORKSPACE_WIDTH, vh / WORKSPACE_HEIGHT));
+      viewport.scrollLeft = 0;
+      viewport.scrollTop = 0;
+    }
+
+    function getPanelWidth() {
+      const value = getComputedStyle(document.documentElement)
+        .getPropertyValue("--panel-width")
+        .trim();
+      return Number.parseFloat(value) || 390;
+    }
+
+    function setPanelWidth(width) {
+      const maxWidth = Math.max(360, window.innerWidth - 520);
+      const nextWidth = Math.max(280, Math.min(maxWidth, width));
+      document.documentElement.style.setProperty("--panel-width", `${nextWidth}px`);
+    }
+
+    function initPanelResizer() {
+      const resizer = document.getElementById("panelResizer");
+
+      resizer.addEventListener("mousedown", event => {
+        if (event.button !== 0) return;
+        event.preventDefault();
+
+        const startX = event.clientX;
+        const startWidth = getPanelWidth();
+        resizer.classList.add("dragging");
+        document.body.classList.add("resizing-panel");
+
+        function onMouseMove(moveEvent) {
+          setPanelWidth(startWidth + startX - moveEvent.clientX);
+        }
+
+        function onMouseUp() {
+          resizer.classList.remove("dragging");
+          document.body.classList.remove("resizing-panel");
+          document.removeEventListener("mousemove", onMouseMove);
+          document.removeEventListener("mouseup", onMouseUp);
+        }
+
+        document.addEventListener("mousemove", onMouseMove);
+        document.addEventListener("mouseup", onMouseUp);
+      });
+
+      resizer.addEventListener("dblclick", () => setPanelWidth(390));
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function escapeJs(value) {
+      return String(value ?? "").replaceAll("\\", "\\\\").replaceAll("'", "\\'");
+    }
+
+    function cssEscape(value) {
+      if (window.CSS && CSS.escape) return CSS.escape(value);
+      return String(value).replace(/[^a-zA-Z0-9_-]/g, "\\$&");
+    }
+
+    document.getElementById("workspace").addEventListener("click", event => {
+      if (event.target.id === "workspace" || event.target.id === "connectionLayer") {
+        selectedNodeKey = null;
+        selectedEdgeKey = null;
+        render();
+      }
+    });
+
+    window.addEventListener("resize", () => {
+      if (document.body.classList.contains("embed-complete")) {
+        fitCompleteFlowToPage();
+      } else {
+        setPanelWidth(getPanelWidth());
+        drawEdges();
+      }
+    });
+
+    initPanelResizer();
+    renderSopInfoPanel();
+    applyNodeSidebarState();
+    applyPropertyPanelState();
+    applyGridState();
+    render();
+    fitZoomToPage();   // 처음 열 때 16:9 페이지 전체가 보이도록
+
+
+    let editViewportState = null;
+
+    function getCompleteContentBounds() {
+      if (!nodes.length) {
+        return { minX: 0, minY: 0, maxX: WORKSPACE_WIDTH, maxY: WORKSPACE_HEIGHT };
+      }
+
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
+
+      for (const node of nodes) {
+        const size = nodeSizes[node.node_type] || { width: 120, height: 80 };
+        minX = Math.min(minX, Number(node.x) || 0);
+        minY = Math.min(minY, Number(node.y) || 0);
+        maxX = Math.max(maxX, (Number(node.x) || 0) + size.width);
+        maxY = Math.max(maxY, (Number(node.y) || 0) + size.height);
+      }
+
+      // Include manually routed edge points so a bent connector is not clipped.
+      for (const edge of edges) {
+        if (Number.isFinite(Number(edge?.route?.x))) {
+          minX = Math.min(minX, Number(edge.route.x));
+          maxX = Math.max(maxX, Number(edge.route.x));
+        }
+        if (Number.isFinite(Number(edge?.route?.y))) {
+          minY = Math.min(minY, Number(edge.route.y));
+          maxY = Math.max(maxY, Number(edge.route.y));
+        }
+      }
+
+      return { minX, minY, maxX, maxY };
+    }
+
+    function fitCompleteFlowToPage() {
+      const viewport = document.getElementById("canvasViewport");
+      const workspace = document.getElementById("workspace");
+      const sizer = document.getElementById("workspaceSizer");
+      if (!viewport || !workspace || !sizer) return;
+
+      const vw = Math.max(1, viewport.clientWidth);
+      const vh = Math.max(1, viewport.clientHeight);
+
+      // Fixed-size rendering: the scale is derived ONLY from the container size and
+      // the full logical canvas (WORKSPACE_WIDTH x WORKSPACE_HEIGHT) - never from the
+      // flowchart's own content bounding box. This keeps node/text sizes identical
+      // across every flowchart block (and every exported PNG/PPT image), regardless
+      // of how much was drawn or how far it was zoomed while editing.
+      // 바깥 page-surface가 16:9이므로 1920x1080 페이지가 화면에 정확히 꽉 차게 맞는다.
+      const fit = Math.min(vw / WORKSPACE_WIDTH, vh / WORKSPACE_HEIGHT);
+
+      const renderedW = WORKSPACE_WIDTH * fit;
+      const renderedH = WORKSPACE_HEIGHT * fit;
+      const offsetX = (vw - renderedW) / 2;
+      const offsetY = (vh - renderedH) / 2;
+
+      workspace.style.transformOrigin = "0 0";
+      workspace.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${fit})`;
+      sizer.style.width = `${vw}px`;
+      sizer.style.height = `${vh}px`;
+      viewport.scrollLeft = 0;
+      viewport.scrollTop = 0;
+      drawEdges();
+    }
+
+    window.__setEmbeddedMode = function(mode) {
+      const viewport = document.getElementById("canvasViewport");
+      const enteringComplete = mode === 'complete';
+
+      if (enteringComplete && !document.body.classList.contains('embed-complete')) {
+        editViewportState = {
+          scrollLeft: viewport?.scrollLeft || 0,
+          scrollTop: viewport?.scrollTop || 0
+        };
+      }
+
+      document.body.classList.toggle('embed-complete', enteringComplete);
+
+      if (enteringComplete) {
+        selectedNodeKey = null;
+        selectedEdgeKey = null;
+        connectionDraft = null;
+        requestAnimationFrame(() => requestAnimationFrame(fitCompleteFlowToPage));
+      } else {
+        applyZoom();
+        applyGridState();
+        render();
+        requestAnimationFrame(() => {
+          if (viewport && editViewportState) {
+            viewport.scrollLeft = editViewportState.scrollLeft;
+            viewport.scrollTop = editViewportState.scrollTop;
+          }
+        });
+      }
+    };
+
+    function collectSeqNodesInFlowOrder() {
+      const byKey = new Map(nodes.map(node => [node.node, node]));
+      const visited = new Set();
+      const ordered = [];
+
+      const walk = key => {
+        if (!key || visited.has(key)) return;
+        visited.add(key);
+        const node = byKey.get(key);
+        if (!node) return;
+        if (node.node_type === "seq") ordered.push(node);
+        for (const edge of edges.filter(item => item.source === key)) walk(edge.target);
+      };
+
+      nodes.filter(node => node.node_type === "start").forEach(node => walk(node.node));
+
+      nodes
+        .filter(node => node.node_type === "seq" && !visited.has(node.node))
+        .sort((a, b) => (extractNodeNumber(a.node, "seq") || 0) - (extractNodeNumber(b.node, "seq") || 0))
+        .forEach(node => ordered.push(node));
+
+      return ordered;
+    }
+
+    // Activity 정의서용 추출: seq 노드만, 플로우 진행 순서대로.
+    window.__flowExportActivity = function() {
+      return {
+        sop_id: sopInfo.sop_id || "",
+        sop_name: sopInfo.sop_name || "",
+        rows: collectSeqNodesInFlowOrder().map(node => ({
+          key: node.node,
+          number: extractNodeNumber(node.node, "seq"),
+          action: node.action || "",
+          description: node.description || "",
+          systems: (node.systems || [])
+            .map(system => ({
+              name: String(system.name || "").trim(),
+              menus: (system.menus || []).map(menu => String(menu).trim()).filter(Boolean)
+            }))
+            .filter(system => system.name || system.menus.length)
+        }))
+      };
+    };
+
+    /* ------------------------------------------------------------------
+       PPT 내보내기용 도형 모델
+       노드/엣지를 "사각형·원·마름모 / 텍스트박스 / 선" 같은 원시 도형 목록으로
+       풀어낸다. 좌표 단위는 캔버스 px(1920x1080). 실제 PPTX 생성은 바깥 문서에서
+       pptxgenjs로 하며, 여기서는 레이아웃만 책임진다 (편집기와 같은 규칙 사용).
+    ------------------------------------------------------------------ */
+    function buildPptModel() {
+      refreshSopRefsFromLibrary();   // 내보내기 직전, SOP 상자의 번호·이름을 라이브러리 기준 최신값으로
+      const items = [];
+      const LINE_COLOR = "111111";
+      const EDGE_COLOR = "374151";
+
+      // ---- 연결선 (노드 아래에 깔리도록 먼저) ----
+      for (const edge of edges) {
+        const start = getPortPoint(edge.source, edge.sourcePort);
+        const end = getPortPoint(edge.target, edge.targetPort);
+        if (!start || !end) continue;
+        const points = getEdgeGeometry(edge, start, end).points;
+        if (points.length < 2) continue;
+
+        for (let i = 1; i < points.length; i += 1) {
+          items.push({
+            kind: "line",
+            x1: points[i - 1].x, y1: points[i - 1].y,
+            x2: points[i].x, y2: points[i].y,
+            color: EDGE_COLOR, width: 2.2,
+            arrow: i === points.length - 1
+          });
+        }
+
+        if (edge.condition) {
+          const label = getPolylineLabelPoint(points);
+          const text = String(edge.condition);
+          const w = Math.max(48, text.length * 8 + 16);
+          items.push({
+            kind: "text", text,
+            x: label.x - w / 2, y: label.y - 22, w, h: 18,
+            fontSize: 12, bold: true, color: "111827", fill: "FFFFFF",
+            align: "center", valign: "middle"
+          });
+        }
+      }
+
+      // ---- 노드 ----
+      for (const node of nodes) {
+        const size = nodeSizes[node.node_type];
+        if (!size) continue;
+        const { x, y } = node;
+        const w = size.width;
+        const h = size.height;
+
+        if (node.node_type === "start" || node.node_type === "end") {
+          items.push({ kind: "shape", shape: "ellipse", x, y, w, h, fill: "FFFFFF", line: LINE_COLOR, lineWidth: 2 });
+          items.push({
+            kind: "text", text: getNodeDisplayName(node),
+            x: x + 10, y: y + 10, w: w - 20, h: h - 20,
+            fontSize: getNodeFontSize(node), bold: true, color: "111111", align: "center", valign: "middle"
+          });
+          continue;
+        }
+
+        if (node.node_type === "decision") {
+          items.push({ kind: "shape", shape: "diamond", x, y, w, h, fill: "FFFFFF", line: LINE_COLOR, lineWidth: 2 });
+          items.push({
+            kind: "text", text: getNodeDisplayName(node),
+            x: x + w * 0.18, y: y + h * 0.18, w: w * 0.64, h: h * 0.64,
+            fontSize: getNodeFontSize(node), bold: true, color: "111111", align: "center", valign: "middle"
+          });
+          continue;
+        }
+
+        if (node.node_type === "sop") {
+          items.push({ kind: "shape", shape: "roundRect", x, y, w, h, radius: 34, fill: "FFFFFF", line: LINE_COLOR, lineWidth: 2 });
+          items.push({
+            kind: "text", text: getNodeDisplayName(node),
+            x: x + 14, y: y + 8, w: w - 28, h: h - 16,
+            fontSize: getNodeFontSize(node), bold: true, color: "111111", align: "center", valign: "middle"
+          });
+          continue;
+        }
+
+        // SEQ: 편집기 DOM과 같은 3단 구조 (상단 27 / Action 77 / System·Manual 27)
+        const number = node.node.split("_").pop();
+        const topH = 27;
+        const actionH = 77;
+        const numberW = 46;
+        const systemSummary = getSystemSummary(node);
+        const manualSummary = getManualSummary(node);
+
+        items.push({ kind: "shape", shape: "rect", x, y, w, h, fill: "FFFFFF", line: LINE_COLOR, lineWidth: 2 });
+        // 구분선
+        items.push({ kind: "line", x1: x, y1: y + topH, x2: x + w, y2: y + topH, color: LINE_COLOR, width: 2, arrow: false });
+        items.push({ kind: "line", x1: x, y1: y + topH + actionH, x2: x + w, y2: y + topH + actionH, color: LINE_COLOR, width: 2, arrow: false });
+        items.push({ kind: "line", x1: x + numberW, y1: y, x2: x + numberW, y2: y + topH, color: LINE_COLOR, width: 2, arrow: false });
+
+        items.push({
+          kind: "text", text: `# ${number}`,
+          x: x + 2, y: y + 2, w: numberW - 4, h: topH - 4,
+          fontSize: getSeqFontSize(node, "number"), bold: true, color: "111111", align: "center", valign: "middle"
+        });
+        items.push({
+          kind: "text", text: node.role_owner || "",
+          x: x + numberW + 3, y: y + 2, w: w - numberW - 6, h: topH - 4,
+          fontSize: getSeqFontSize(node, "role_owner"), bold: true, color: "111111", align: "center", valign: "middle"
+        });
+        items.push({
+          kind: "text", text: node.action || "",
+          x: x + 8, y: y + topH + 6, w: w - 16, h: actionH - 12,
+          fontSize: getSeqFontSize(node, "action"), bold: true, color: "111111", align: "center", valign: "middle"
+        });
+
+        const execLines = [];
+        if (systemSummary) execLines.push({ text: systemSummary, fontSize: getSeqFontSize(node, "system") });
+        if (manualSummary) execLines.push({ text: manualSummary, fontSize: getSeqFontSize(node, "manual") });
+        if (!execLines.length) execLines.push({ text: "System / Manual", fontSize: getSeqFontSize(node, "system"), color: "9CA3AF" });
+        items.push({
+          kind: "text", runs: execLines,
+          x: x + 6, y: y + topH + actionH + 2, w: w - 12, h: h - topH - actionH - 4,
+          bold: true, color: "111111", align: "center", valign: "middle"
+        });
+      }
+
+      return {
+        width: WORKSPACE_WIDTH,
+        height: WORKSPACE_HEIGHT,
+        title: sopInfo.sop_name || "",
+        sopId: sopInfo.sop_id || "",
+        items
+      };
+    }
+
+    window.__flowExportPptModel = buildPptModel;
+
+    // 문서 전체 저장/불러오기용: localStorage를 거치지 않고 프로젝트 객체를 직접 주고받는다.
+    // (개별 flowchart 저장/불러오기 버튼은 제거되었고, 상위 문서의 "문서 저장"/"문서 불러오기"가
+    //  이 두 함수를 통해 각 flowchart의 상태까지 함께 저장/복원한다.)
+    window.__flowSyncSop = function(info) { sopInfo = {sop_id:info.id || '', sop_name:info.name || '', description:info.desc || ''}; renderSopInfoPanel(); };
+    // 바깥 문서가 라이브러리(서버의 SOP 목록)를 넘겨준다: [{ id, sop_no, name, area, status }]. SOP 상자가 이 목록으로 연결 상태를 판단한다.
+    window.__flowSyncLibrary = function(list) { syncLibrary(list); };
+    window.__flowExportProject = function() { return buildProject(); };
+    window.__flowImportProject = function(project) {
+      if (!project) return false;
+      try {
+        applyProject(project);
+        return true;
+      } catch (error) {
+        return false;
+      }
+    };
+
+  </script>
+</body>
+</html>

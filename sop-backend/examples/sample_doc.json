@@ -1,0 +1,83 @@
+{
+  "doc": {
+    "format": "sop-editor-mock",
+    "version": 1,
+    "savedAt": "2026-09-09T01:00:00.000Z",
+    "sop": {
+      "id": "SOP-ETCH-001",
+      "name": "Chamber PM 절차",
+      "desc": "Etch 장비 Chamber 정기 점검(PM) 절차"
+    },
+    "studio": {
+      "owner": "홍길동/장비기술",
+      "revision": "1.0",
+      "area": "P",
+      "tags": ["PM", "Chamber"]
+    },
+    "mode": "edit",
+    "blocks": [
+      {
+        "type": "title",
+        "main": "<h2>Chamber PM 절차</h2>",
+        "meta": "SOP-ETCH-001 / Rev 1.0"
+      },
+      {
+        "type": "flowchart",
+        "instanceId": "flow_1757379600000_1",
+        "project": {
+          "sopInfo": {
+            "sop_id": "SOP-ETCH-001",
+            "sop_name": "Chamber PM 절차",
+            "description": "Etch 장비 Chamber 정기 점검(PM) 절차"
+          },
+          "nodes": [
+            { "node": "start_1", "node_type": "start", "x": 120, "y": 90, "name": "PM 일정 도래", "font_size": 17 },
+            {
+              "node": "seq_1", "node_type": "seq", "x": 120, "y": 240,
+              "role_owner": "장비 엔지니어", "action": "장비 Down 및 Lot 배출",
+              "description": "진행 중인 Lot 을 모두 배출한 뒤 장비를 Down 상태로 전환",
+              "systems": [{ "name": "MES", "menus": ["Lot 조회", "장비 상태 변경"] }],
+              "manual": ["Chamber 온도 확인"],
+              "font_size": 15,
+              "seq_font_sizes": {}
+            },
+            {
+              "node": "decision_1", "node_type": "decision", "x": 120, "y": 420,
+              "role_owner": "", "action": "Chamber 온도 50도 이하?", "description": "", "font_size": 14
+            },
+            {
+              "node": "seq_2", "node_type": "seq", "x": 120, "y": 600,
+              "role_owner": "장비 엔지니어", "action": "Chamber 분해 및 세정",
+              "description": "", "systems": [], "manual": ["부품 세정", "O-ring 교체"],
+              "font_size": 15,
+              "seq_font_sizes": {}
+            },
+            {
+              "node": "sop_1", "node_type": "sop", "x": 400, "y": 420,
+              "sop_id": "SOP-ETCH-002", "sop_name": "Particle 대응 절차",
+              "ref_document_id": null,
+              "description": "다른 SOP 를 가리키는 상자. ref_document_id 가 null 이면 서버가 저장할 때 번호(sop_id)로 문서를 찾아 채웁니다",
+              "font_size": 17
+            },
+            { "node": "end_1", "node_type": "end", "x": 120, "y": 780, "name": "PM 완료", "font_size": 17 }
+          ],
+          "edges": [
+            { "edge": "edge_1757379600001_a1", "source": "start_1", "target": "seq_1", "sourcePort": "bottom", "targetPort": "top", "condition": "", "line_type": "orthogonal", "route": null },
+            { "edge": "edge_1757379600002_b2", "source": "seq_1", "target": "decision_1", "sourcePort": "bottom", "targetPort": "top", "condition": "", "line_type": "orthogonal", "route": null },
+            { "edge": "edge_1757379600003_c3", "source": "decision_1", "target": "seq_2", "sourcePort": "bottom", "targetPort": "top", "condition": "Yes", "line_type": "orthogonal", "route": null },
+            { "edge": "edge_1757379600005_e5", "source": "decision_1", "target": "sop_1", "sourcePort": "right", "targetPort": "left", "condition": "No", "line_type": "orthogonal", "route": null },
+            { "edge": "edge_1757379600004_d4", "source": "seq_2", "target": "end_1", "sourcePort": "bottom", "targetPort": "top", "condition": "", "line_type": "orthogonal", "route": null }
+          ],
+          "counters": { "start": 1, "seq": 2, "decision": 1, "sop": 1, "end": 1 },
+          "ui": {}
+        }
+      },
+      {
+        "type": "scope",
+        "cells": ["Chamber PM 절차", "장비 점검", "Etch Chamber 의 정기 점검 절차를 정한다", "Etch 공정 전 장비"]
+      }
+    ]
+  },
+  "change_note": "README curl 예시 (POST /api/sops 본문)",
+  "saved_by": "hong"
+}

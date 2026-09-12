@@ -1,0 +1,7 @@
+# 개발·테스트용 라이브러리.  설치:  pip install -r requirements-dev.txt
+# (실행용 requirements.txt 도 함께 설치됩니다)
+-r requirements.txt
+pytest>=8
+pytest-asyncio>=0.24
+httpx>=0.27
+pgserver
