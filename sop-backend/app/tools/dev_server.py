@@ -19,9 +19,13 @@ dev_server.py — 도커도, PostgreSQL 설치도 없이 내 PC 에서 바로 �
 """
 
 import argparse
+import asyncio
 import json
 import os
 import sys
+
+# psutil: "이 번호의 프로그램이 살아 있나" 를 안전하게 물어보는 라이브러리 (pgserver 가 함께 설치해 줍니다)
+import psutil
 
 # 표 만들기/갱신은 apply_schema.py 가 담당합니다 (테스트도 같은 함수를 씀). 여기서는 그냥 빌려 씁니다.
 from app.tools.apply_schema import PROJECT_ROOT, apply_schema
@@ -46,11 +50,14 @@ def prune_dead_handles(data_dir: str) -> None:
             pids = json.load(f)
         alive = []
         for pid in pids:
+            # psutil.pid_exists = 그 번호의 프로그램이 지금 돌고 있으면 True.
+            # (예전에는 os.kill(pid, 0) 으로 확인했는데, 윈도우에서는 그 명령이 "확인" 이 아니라 진짜로 프로그램을
+            #  꺼 버리므로 절대 쓰면 안 됩니다. psutil 은 어느 운영체제에서나 안전하게 확인만 합니다)
             try:
-                os.kill(int(pid), 0)  # 신호 0 = "죽이지 말고 살아 있는지만 확인"
-                alive.append(pid)
-            except (OSError, ValueError):
-                pass  # 이미 없는 프로그램이므로 명단에서 뺍니다
+                if psutil.pid_exists(int(pid)):
+                    alive.append(pid)
+            except (ValueError, TypeError):
+                pass  # 번호가 아닌 이상한 값은 명단에서 뺍니다
         if len(alive) != len(pids):
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(alive, f)
@@ -92,6 +99,9 @@ def main() -> int:
     os.environ.setdefault("STATIC_DIR", os.path.join(PROJECT_ROOT, "static"))
     print(f"[dev] 브라우저에서 열기: http://{'localhost' if args.host == '127.0.0.1' else args.host}:{args.port}")
     print("[dev] 끄려면 Ctrl+C")
+    # 윈도우 전용: 기본 비동기 방식(Proactor)이 DB 드라이버(psycopg)와 맞지 않아 Selector 방식으로 바꿉니다. (app.py 와 같은 처리)
+    if sys.platform == "win32":
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     try:
         uvicorn.run("app.main:app", host=args.host, port=args.port, reload=args.reload)
     finally:

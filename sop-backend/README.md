@@ -10,6 +10,7 @@
 
 ```
 sop-backend/
+  app.py                 시작 버튼. python app.py 로 서버를 켬 (회사 컨테이너의 ENTRYPOINT 와 동일)
   app/
     main.py              FastAPI 앱 출발점. DB 풀 열고 닫기, 요청 로그, 413 크기 제한, /health, 편집기 HTML 서빙(api-base meta 주입)
     config.py            환경변수 읽기 (DATABASE_URL / PGHOST… / ROOT_PATH / USER_HEADER 등 전부 여기)
@@ -102,7 +103,7 @@ kill <pid>                        # 그 번호를 끄기 (안 죽으면 kill -9 
 cp .env.example .env               # DATABASE_URL 등을 내 값으로 고침
 set -a; source .env; set +a        # 현재 터미널에 환경변수 적용
 python -m app.tools.apply_schema   # 표 만들기 (처음 한 번. 이미 있으면 마이그레이션만)
-uvicorn app.main:app --reload      # 서버 켜기
+python app.py                      # 서버 켜기 (회사 컨테이너와 같은 방식. 포트는 PORT 환경변수, 기본 8000)
 ```
 
 ## 4. 회사 환경 배포 (HCP 컨테이너 + 외부 PostgreSQL 17)
@@ -197,7 +198,7 @@ docker run -p 8000:8000 \
   sop-api:2.0
 ```
 
-Dockerfile 이 해 두는 것: 비루트 사용자(`app`, uid 10001)로 실행 / `PORT` 환경변수로 포트 결정 / 앞단 프록시의 `X-Forwarded-*` 헤더를 믿도록 `--proxy-headers` / `HEALTHCHECK` 로 30초마다 `/health` 확인 / `.dockerignore` 덕분에 `pgdata/`, `.env`, `tests/` 는 이미지에 들어가지 않음.
+Dockerfile 이 해 두는 것: `ENTRYPOINT ["python", "app.py"]` 로 시작(회사 규칙과 동일 — 포트·프록시 설정은 `app.py` 가 환경변수로 읽음) / 비루트 사용자(`app`, uid 10001)로 실행 / `PORT` 환경변수로 포트 결정 / 앞단 프록시의 `X-Forwarded-*` 헤더를 믿도록 proxy_headers / `HEALTHCHECK` 로 30초마다 `/health` 확인 / `.dockerignore` 덕분에 `pgdata/`, `.env`, `tests/` 는 이미지에 들어가지 않음.
 
 ### 4-5. 생존 확인 주소 (probe)
 
@@ -429,6 +430,26 @@ python -m app.tools.flow_editor check     # 4) 넣은 결과를 다시 풀었을
 ```
 
 `SOP_STUDIO.html` 의 Base64 줄을 직접 편집하지 마세요. 그 파일의 나머지 부분(라이브러리 패널 등)은 보통 파일처럼 고치면 됩니다.
+
+### 9-3. 코드 읽기 전에 — 자주 나오는 문법 10가지
+
+코드 자체는 일부러 쉬운 문법만 썼지만, 웹 서버 + DB 라는 성격상 피할 수 없는 것들이 있습니다. 처음 보면 낯선 것만 골라 한 줄씩 적어 둡니다.
+
+| 문법 | 뜻 | 어디서 보이나 |
+|---|---|---|
+| `async def` / `await` | "기다리는 동안 다른 요청도 처리해라". `await` 가 붙은 줄(DB 조회 등)에서 잠깐 멈췄다가 결과가 오면 이어서 실행 | 거의 모든 API 함수 |
+| `Depends(함수)` | "이 함수를 먼저 실행해서 그 결과를 여기 넣어 달라". 사용자 이름(`current_user`), DB 연결(`get_conn`)을 받는 방법 | `routers/*.py` 함수 매개변수 |
+| `yield` | 값을 주고 **끝나는 게 아니라 멈춰서 기다림**. 쓰는 쪽이 끝나면 뒷부분을 이어서 실행 (DB 연결 반납에 씀) | `db.py get_conn`, `main.py lifespan` |
+| `async with ... :` | 블록에 들어갈 때 준비하고, 나올 때(오류가 나도) 정리해 주는 문. 연결 빌리기/반납, 트랜잭션 시작/끝 | `db.py`, `sops.py` |
+| `conn.transaction()` | "이 블록 안의 DB 작업은 한 묶음". 하나라도 실패하면 전부 취소(rollback) | `sops.py` 저장 |
+| `FOR UPDATE` (SQL) | "이 행을 내가 다 쓸 때까지 다른 요청은 기다려라". 두 사람이 동시에 저장해도 안 깨지게 | `sops.py`, `locks.py` |
+| `raise ApiError(409, "code", "메시지")` | 여기서 처리를 멈추고 이 오류를 손님에게 돌려줘라. `errors.py` 가 JSON 모양으로 바꿔 줌 | 곳곳 |
+| `@dataclass` | "이름: 타입" 만 나열하면 값 담는 상자(클래스)를 자동으로 만들어 줌 | `derive.py DocumentMeta` |
+| `f"...{변수}..."` | 문자열 안에 변수 값을 끼워 넣기 | 로그·오류 메시지 |
+| `dict.get("키")` / `isinstance(x, dict)` | 키가 없어도 오류 대신 None / "이 값이 dict 가 맞나" 검사. 편집기 JSON 이 조금 이상해도 서버가 죽지 않게 | `derive.py` |
+
+읽는 순서 추천: `app.py` → `app/main.py` → `app/routers/sops.py` 의 `list_documents`(가장 짧은 API) → `save_document` → `app/refs.py`.
+`app/derive.py`, `app/db.py`, `app/config.py` 는 필요할 때 찾아보면 됩니다.
 
 ## 10. 문제 해결
 
