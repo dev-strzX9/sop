@@ -183,24 +183,7 @@ class UnlockRequest(BaseModel):
 
 
 # ---------------------------------------------------------------------
-# 자동 임시 저장 (draft)
-# ---------------------------------------------------------------------
-class DraftRequest(BaseModel):
-    """PUT /api/sops/{doc_id}/draft 요청 본문."""
-
-    user: str = ""
-    content: dict[str, Any]
-
-
-class DraftResponse(BaseModel):
-    document_id: UUID
-    user_id: str
-    content: dict[str, Any]
-    updated_at: UtcDatetime
-
-
-# ---------------------------------------------------------------------
-# 기타
+# 공통 응답
 # ---------------------------------------------------------------------
 class StatusResponse(BaseModel):
     """폐기/복구/잠금 해제처럼 "됐다" 만 알려 주면 되는 응답."""

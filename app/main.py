@@ -30,7 +30,7 @@ from app import db
 from app.config import get_settings, mask_password
 from app.deps import current_user
 from app.errors import error_body, install_error_handlers
-from app.routers import drafts, locks, sops, versions
+from app.routers import locks, sops, versions
 from app.schemas import HealthResponse
 
 # 앱을 만들 때 한 번 읽는 값(_settings). 요청을 처리하는 함수 안에서는 get_settings() 를 다시 불러서
@@ -119,7 +119,6 @@ API_GUARD = [Depends(current_user)]
 app.include_router(sops.router, prefix="/api", dependencies=API_GUARD)
 app.include_router(versions.router, prefix="/api", dependencies=API_GUARD)
 app.include_router(locks.router, prefix="/api", dependencies=API_GUARD)
-app.include_router(drafts.router, prefix="/api", dependencies=API_GUARD)
 
 
 @app.get("/health", include_in_schema=False)   # include_in_schema=False: /docs 목록에서 숨김

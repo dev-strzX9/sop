@@ -11,7 +11,6 @@ sops.py — SOP 문서의 "목록 / 열기 / 저장 / 번호 변경 / 폐기 / �
   PUT    /sops/{doc_id}               기존 문서에 새 버전 한 줄 추가 (폐기된 문서였으면 draft 로 되살림)
   PATCH  /sops/{doc_id}/number        SOP 번호 바꾸기 (버전은 손대지 않음)
   DELETE /sops/{doc_id}               폐기 (행을 지우지 않고 status 만 'retired' 로)
-  POST   /sops/{doc_id}/restore       폐기 취소 (status 를 'draft' 로)
   GET    /sops/{doc_id}/referenced-by 이 문서를 참조하는 다른 문서 목록
 
 용어: 문서(sop_documents) = SOP 한 건 (id 는 영구 번호(UUID), sop_no 는 사람이 보는 번호 — 바뀔 수 있음).
@@ -305,8 +304,6 @@ async def _append_version(
         "WHERE id = %s",
         (version_id, meta.name, meta.area, new_status, doc_id),
     )
-    # f. 정식으로 저장했으니 이 사용자의 자동 임시 저장본은 더 이상 필요 없다 → 지운다
-    await conn.execute("DELETE FROM sop_drafts WHERE document_id = %s AND user_id = %s", (doc_id, saved_by))
 
     log.info(
         "saved %s v%s nodes=%s edges=%s refs=%s/%s/%s status=%s by %s",
@@ -504,7 +501,7 @@ async def rename_document(
 @router.delete("/sops/{doc_id}", response_model=StatusResponse)
 async def retire_document(doc_id: UUID, conn: AsyncConnection = Depends(get_conn)):
     """
-    문서를 폐기 상태로 바꿉니다 (행은 남겨 두어 restore 로 되돌릴 수 있음). 트리에서 "삭제" 를 누를 때 프론트가 호출합니다.
+    문서를 폐기 상태로 바꿉니다 (행은 남겨 둡니다 — 이 문서에 다시 저장하면 draft 로 되살아납니다). 트리에서 "삭제" 를 누를 때 프론트가 호출합니다.
     응답의 referenced_by 는 "이 문서를 참조하는 다른 문서 수" — 0 이 아니면 프론트가 주의를 줄 수 있습니다.
     """
     # 문서 상태를 'retired' 로 바꾸고, 바뀐 문서의 id 와 번호를 돌려받는다 (없는 문서면 결과 없음)
@@ -516,20 +513,6 @@ async def retire_document(doc_id: UUID, conn: AsyncConnection = Depends(get_conn
         raise ApiError(404, "not_found", "문서를 찾을 수 없습니다.")
     referenced_by = await count_referenced_by(conn, row["id"], row["sop_no"])
     return StatusResponse(id=row["id"], status="retired", referenced_by=referenced_by)
-
-
-# ----- 7. 복구 (폐기 취소) --------------------------------------------------------------
-@router.post("/sops/{doc_id}/restore", response_model=StatusResponse)
-async def restore_document(doc_id: UUID, conn: AsyncConnection = Depends(get_conn)):
-    """폐기한 문서를 다시 'draft' 상태로 되돌립니다. 실수로 폐기한 문서를 살릴 때 관리자가 호출합니다."""
-    # 문서 상태를 'draft' 로 되돌리고, 바뀐 문서의 id 를 돌려받는다 (없는 문서면 결과 없음)
-    cur = await conn.execute(
-        "UPDATE sop_documents SET status = 'draft', updated_at = now() WHERE id = %s RETURNING id", (doc_id,)
-    )
-    row = await cur.fetchone()
-    if row is None:
-        raise ApiError(404, "not_found", "문서를 찾을 수 없습니다.")
-    return StatusResponse(id=row["id"], status="draft")
 
 
 # ----- 8. 이 문서를 참조하는 다른 문서 --------------------------------------------------------
