@@ -2,3 +2,9 @@
 __pycache__/
 *.pyc
 .venv/
+
+# 안전장치: 개발용 복제본(dev-sop 브랜치)에서 실수로 main 으로 전환해도
+# 로컬 DB(pgdata/)와 개발 폴더 껍데기가 "변경" 으로 잡혀 지워지는 일이 없도록 무시합니다.
+**/pgdata/
+sop-backend/
+.pytest_cache/
