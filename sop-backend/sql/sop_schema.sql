@@ -11,8 +11,7 @@
 --    sop_documents 1 ─── N sop_versions 1 ─── N flow_nodes / flow_edges
 --         │                     └── content jsonb (편집기 JSON 원본, 복원용)
 --         ├── current_version_id  → "지금 최신" 포인터
---         ├── sop_edit_locks (동시 편집 방지, 선택)
---         └── sop_drafts     (자동 임시 저장, 버전 안 쌓임, 선택)
+--         └── sop_edit_locks (동시 편집 방지, 선택)
 --
 --  원칙
 --   1. 편집기 저장/복원은 sop_versions.content 하나로 끝난다.
@@ -122,18 +121,6 @@ CREATE TABLE sop_edit_locks (
     locked_by   text NOT NULL,
     locked_at   timestamptz NOT NULL DEFAULT now(),
     expires_at  timestamptz NOT NULL
-);
-
--- ---------------------------------------------------------------------
--- 6. 자동 임시 저장 (사용자당 문서당 최신 1개만 덮어씀. 버전을 쌓지 않는다.)
---    지금 브라우저 localStorage 임시 저장을 서버로 옮길 때 사용.
--- ---------------------------------------------------------------------
-CREATE TABLE sop_drafts (
-    document_id uuid NOT NULL REFERENCES sop_documents(id) ON DELETE CASCADE,
-    user_id     text NOT NULL,
-    content     jsonb NOT NULL,
-    updated_at  timestamptz NOT NULL DEFAULT now(),
-    PRIMARY KEY (document_id, user_id)
 );
 
 -- ---------------------------------------------------------------------

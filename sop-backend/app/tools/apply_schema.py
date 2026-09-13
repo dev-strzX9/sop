@@ -47,7 +47,7 @@ TRGM_ERRORS = (
 )
 
 # 우리 표 이름 전부 (테스트에서 DROP 할 때 씀). 서로 연결돼 있어 CASCADE 로 한 번에 지웁니다.
-ALL_TABLES = ("sop_drafts", "sop_edit_locks", "flow_edges", "flow_nodes", "sop_versions", "sop_documents")
+ALL_TABLES = ("sop_edit_locks", "flow_edges", "flow_nodes", "sop_versions", "sop_documents")
 
 
 # ----- 작은 도우미들 ------------------------------------------------------------------------

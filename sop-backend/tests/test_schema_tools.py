@@ -53,7 +53,8 @@ def test_migration_is_idempotent(database_url):
     messages = []
     result = tool.apply_schema(database_url, log=messages.append)
     assert result["mode"] == "migrate"
-    assert result["files"] == [os.path.join("sql", "migrations", "001_ref_document_id.sql")]
+    assert result["files"] == [os.path.join("sql", "migrations", name)
+                               for name in ("001_ref_document_id.sql", "002_drop_sop_drafts.sql")]
     assert column_exists(database_url, "flow_nodes", "ref_document_id")
     assert index_exists(database_url, "ix_flow_nodes_ref_doc")
 
@@ -83,7 +84,8 @@ def test_dry_run_changes_nothing(database_url):
     messages = []
     result = tool.apply_schema(database_url, dry_run=True, log=messages.append)
     assert result["mode"] == "migrate"
-    assert result["files"] == [os.path.join("sql", "migrations", "001_ref_document_id.sql")]
+    assert result["files"] == [os.path.join("sql", "migrations", name)
+                               for name in ("001_ref_document_id.sql", "002_drop_sop_drafts.sql")]
     assert any("dry-run" in m for m in messages)
     assert not column_exists(database_url, "flow_nodes", "ref_document_id")
 

@@ -935,7 +935,7 @@ body.lib-collapsed .lib-strip{display:block}
 .lib-btn:hover{background:#f3f3f4}
 .lib-btn.primary{background:#dd3f23;border-color:#dd3f23;color:#fff}
 .lib-btn.primary:hover{background:#c23319}
-.lib-foot-row{display:flex;gap:6px}.lib-foot-row .lib-btn{flex:1}
+
 .lib-foot small{font-size:11px;color:#8b8f96;line-height:1.5}
 .lib-user{display:flex;align-items:center;gap:6px;margin:0 16px 8px;font-size:12px;color:#71757c}
 .lib-user span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -944,6 +944,8 @@ body.lib-collapsed .lib-strip{display:block}
 .lib-refby summary{cursor:pointer;padding:4px 2px;color:#343538}
 .lib-refby-item{display:flex;gap:6px;padding:4px 6px;border-radius:5px;cursor:pointer}
 .lib-refby-item:hover{background:#f3f3f4}
+.lib-refby-item.is-missing{color:#8e9197}.lib-refby-item.is-missing b{text-decoration:line-through}
+.lib-refby-tag{margin-left:auto;font-size:11px;color:#8e9197;white-space:nowrap;font-style:normal}
 .lib-refby-item b{font-weight:600;white-space:nowrap}
 .lib-refby-item span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:1180px){:root{--lib:220px}}
@@ -954,8 +956,7 @@ body.lib-collapsed .lib-strip{display:block}
 body.studio-home{--rail:0px}
 body.studio-home .studio-rail,body.studio-home .studio-topline,body.studio-home #draftBanner,body.studio-home #textToolbar,
 body.studio-home .common-info,body.studio-home .template-bar,body.studio-home .canvas-heading,body.studio-home #documentCanvas,
-body.studio-home #studioSave,body.studio-home #editBtn,body.studio-home #completeBtn,body.studio-home #loadDocBtn,
-body.studio-home #saveDocBtn,body.studio-home #exportPptBtn,body.studio-home #studioExport,body.studio-home #libSaveCurrent,body.studio-home #homeBtn{display:none!important}
+body.studio-home #studioSave,body.studio-home #editBtn,body.studio-home #completeBtn,body.studio-home #exportPptBtn,body.studio-home #studioExport,body.studio-home #libSaveCurrent,body.studio-home #homeBtn{display:none!important}
 .home-view{display:none;max-width:1100px;margin:36px auto;padding:0 26px}
 body.studio-home .home-view{display:block}
 .home-view h2{font-size:24px;margin:0 0 6px}.home-view .home-hint{color:#71757c;font-size:14px;margin:0 0 22px;line-height:1.7}
@@ -975,7 +976,6 @@ body.studio-home .home-view{display:block}
   <span class="studio-save" id="studioSave" role="status">이 기기에 임시 저장</span>
   <div class="header-actions">
     <button id="homeBtn" class="ghost" type="button" title="문서를 닫고 문서 목록(홈)으로">⌂ 홈</button><button id="libToggle" class="ghost" type="button" title="SOP 라이브러리 열기/닫기" aria-pressed="true">라이브러리</button><span class="header-sep"></span><button id="editBtn" class="active" type="button">편집</button><button id="completeBtn" type="button">미리보기</button><span class="header-sep"></span>
-    <button id="loadDocBtn" class="ghost" type="button">불러오기</button><button id="saveDocBtn" class="ghost" type="button" title="편집 가능한 원본 JSON 저장 · Ctrl/⌘ S">원본 저장</button>
     <button id="exportPptBtn" class="ghost" type="button" title="문서의 모든 페이지를 PPT로 내보내기 (순서도는 편집 가능한 도형)">PPT 내보내기</button><button id="studioExport" class="ghost primary" type="button">적재 데이터 ↓</button>
     <button id="fullscreenBtn" class="ghost" type="button" title="전체화면">⛶</button>
   </div>
@@ -988,20 +988,19 @@ body.studio-home .home-view{display:block}
   <input id="libSearch" class="outline-search" type="search" placeholder="SOP 번호·이름 검색" aria-label="라이브러리 검색">
   <div id="libTree" class="lib-tree" role="tree"></div>
   <details id="libRefBy" class="lib-refby" hidden><summary id="libRefBySummary">이 문서를 참조하는 문서 0건</summary><div id="libRefByList"></div></details>
+  <details id="libRefTo" class="lib-refby" hidden><summary id="libRefToSummary">이 문서가 참조하는 문서 0건</summary><div id="libRefToList"></div></details>
   <div class="lib-foot">
     <button id="libNewBtn" type="button" class="lib-btn" title="빈 문서로 새로 시작 (열려 있던 문서는 닫힘)">+ 새 문서</button>
     <button id="libSaveCurrent" type="button" class="lib-btn primary">현재 문서를 라이브러리에 저장</button>
-    <div class="lib-foot-row"><button id="libImport" type="button" class="lib-btn">JSON 가져오기</button><button id="libExportAll" type="button" class="lib-btn">전체 내보내기</button></div>
     <small>AREA별로 SOP 번호 순 정렬. 문서는 서버(DB)에 보관되며, 저장할 때마다 새 버전이 쌓입니다.</small>
   </div>
 </aside>
-<input id="libFilePicker" type="file" accept="application/json,.json" multiple style="display:none" />
 <aside class="studio-rail" aria-label="문서 목차와 템플릿">
  <div class="rail-top"><strong>문서 구성</strong><span class="rail-count" id="pageCount">0</span></div>
  <input id="outlineSearch" class="outline-search" type="search" placeholder="페이지 찾기…" aria-label="페이지 제목 검색">
  <nav id="outlineList" class="outline-list" aria-label="페이지 목차"></nav>
  <hr class="rail-divider"><div class="eyebrow template-section-label">페이지 추가</div><div id="templateMount"></div>
- <div class="rail-foot">16:9 문서 워크스페이스<br><kbd>⌘ / Ctrl</kbd> + <kbd>S</kbd> 원본 저장<br><span>임시 저장은 현재 브라우저에만 보관됩니다.</span></div>
+ <div class="rail-foot">16:9 문서 워크스페이스<br><span>임시 저장은 현재 브라우저에만 보관됩니다.</span></div>
 </aside>
 <section id="homeView" class="home-view" aria-label="문서 목록">
   <h2>SOP 라이브러리</h2>
@@ -1106,7 +1105,6 @@ body.studio-home .home-view{display:block}
 <div id="studioToast" class="studio-toast" role="status" aria-live="polite"><span></span><button type="button" hidden>되돌리기</button></div>
 <dialog id="reviewDialog" class="studio-dialog" aria-labelledby="reviewTitle"><div class="studio-dialog-head"><div><h2 id="reviewTitle">문서 점검 & 적재</h2><p>내용과 순서도 연결을 확인하고 구조화 데이터를 준비하세요.</p></div><button type="button" id="closeReview" aria-label="닫기">×</button></div><div class="studio-tabs" role="tablist" aria-label="점검 및 데이터"><button type="button" role="tab" id="reviewTab" aria-selected="true" aria-controls="reviewBody" class="active">점검 결과</button><button type="button" role="tab" id="dataTab" aria-selected="false" aria-controls="reviewBody">적재 데이터</button></div><div class="studio-dialog-body" id="reviewBody" role="tabpanel"></div><div class="studio-dialog-foot"><small>규칙 기반 점검 · 사내 서버 연결 전 단계</small><button id="downloadRag" type="button">적재 JSON 다운로드</button></div></dialog>
 <input id="bodyImagePicker" type="file" accept="image/*" style="display:none" />
-<input id="docFilePicker" type="file" accept="application/json,.json" style="display:none" />
 
 <script>
 (() => {
@@ -2688,13 +2686,6 @@ body.studio-home .home-view{display:block}
   document.getElementById('activityDialogBackdrop').addEventListener('click', event => {
     if (event.target.id === 'activityDialogBackdrop') closeActivityDialog();
   });
-  document.getElementById('saveDocBtn').addEventListener('click', exportDocumentJson);
-  document.getElementById('loadDocBtn').addEventListener('click', () => document.getElementById('docFilePicker').click());
-  document.getElementById('docFilePicker').addEventListener('change', event => {
-    const file = event.target.files && event.target.files[0];
-    event.target.value = '';
-    if (file) importDocumentJson(file);
-  });
   document.getElementById('editBtn').addEventListener('click', () => setMode('edit'));
   document.getElementById('fullscreenBtn').addEventListener('click', () => {
     if (document.fullscreenElement) { document.exitFullscreen?.(); return; }
@@ -3423,11 +3414,11 @@ body.studio-home .home-view{display:block}
       if(!frame.contentWindow.__flowExportProject) return;
       frame._studioConnected=true;
       // 편집기 안에서 무엇인가 하면 임시저장을 예약하고, 문서를 실제로 바꾼 동작이면 '라이브러리에 저장 안 된 변경' 으로도 표시한다
+      try { frame.contentWindow.__setEmbeddedMode?.(editorMode); } catch(e) {}   // 나중에 뜬 순서도도 지금 모드(편집/미리보기)를 따르게
       const dirty=e=>{ if(editorMode!=='edit') return; scheduleStudioSave(); libNoteChange(e); };
       ['input','change','pointerup','keyup'].forEach(event=>frame.contentDocument.addEventListener(event,dirty));
       frame.contentDocument.addEventListener('pointerdown',libNotePointerDown);
       frame.contentDocument.addEventListener('pointerdown',()=>{const b=frame.closest('.document-block');if(b!==studioSelected)selectStudioBlock(b,false);});
-      frame.contentDocument.addEventListener('keydown',event=>{if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='s'){event.preventDefault();syncStudioFlows();exportDocumentJson();}});
       syncStudioFlows();syncStudioLibrary();refreshStudio();
     }catch(e) {}
   }
@@ -3593,8 +3584,6 @@ body.studio-home .home-view{display:block}
     canvas.addEventListener('pointerdown',e=>{const block=e.target.closest('.document-block');if(block&&block!==studioSelected)selectStudioBlock(block,false);});
     ['input','change','pointerup','keyup'].forEach(event=>document.addEventListener(event,e=>{if(e.target.closest('#documentCanvas,.common-info,#textToolbar,.template-bar')){scheduleStudioSave();libNoteChange(e);}}));
     document.addEventListener('pointerdown',libNotePointerDown);
-    document.addEventListener('keydown',e=>{if(document.body.classList.contains('studio-home'))return; /* 홈 화면(문서 목록)에서는 단축키 무시 */ if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();syncStudioFlows();exportDocumentJson();showStudioToast('원본 JSON 다운로드를 시작했습니다.');}});
-    studioEl('saveDocBtn').addEventListener('click',syncStudioFlows,true);
     studioEl('reviewBtn').onclick=()=>openStudioReview();studioEl('studioExport').onclick=()=>openStudioReview('data');
     studioEl('closeReview').onclick=()=>studioEl('reviewDialog').close();
     studioEl('reviewDialog').addEventListener('click',e=>{if(e.target===studioEl('reviewDialog')){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close();}});
@@ -3732,6 +3721,8 @@ body.studio-home .home-view{display:block}
   let libOpenVersionNo = null;
   let libOpenRefDocs = [];
   let libReferencedBy = [];
+  // 이 문서가 가리키는 다른 문서 목록 (순서도의 SOP 상자에서 뽑아낸 것)
+  let libRefTo = [];
 
   // "라이브러리에서 연 문서" 정보를 모두 잊는다. 파일 불러오기·임시 문서 복구처럼 문서가 통째로 바뀔 때 부른다.
   function libForgetOpen() {
@@ -3740,9 +3731,11 @@ body.studio-home .home-view{display:block}
     libOpenVersionNo = null;
     libOpenRefDocs = [];
     libReferencedBy = [];
+    libRefTo = [];
     libDirty = true;   // 파일에서 불러온 문서는 라이브러리에 없으므로, 다른 문서를 열기 전에 물어봐야 한다 (라이브러리에서 열 때는 아래에서 다시 끈다)
     libReleaseLock();
     renderLibReferencedBy();
+    renderLibRefTo();
   }
 
   // "라이브러리에 저장하지 않은 변경이 있는가" 표시. 다른 문서를 열기 전에 이것을 보고 물어본다.
@@ -3936,6 +3929,72 @@ body.studio-home .home-view{display:block}
     });
   }
 
+  // 지금 편집기에 있는 문서의 순서도에서 '다른 SOP 를 가리키는 상자' 를 모두 찾아 라이브러리 정보와 맞춰 본다.
+  //   연결됨 : 실제 문서를 가리킴 (id 로 연결됐거나, 적어 둔 번호가 라이브러리에 있음) → 눌러서 열 수 있다
+  //   미작성 : 번호만 적혀 있고 라이브러리에 그 번호가 없음                              → 아직 안 만든 문서
+  // 같은 문서를 여러 상자가 가리켜도 목록에는 한 번만 넣는다. 번호도 id 도 없는 빈 상자는 넣지 않는다.
+  function collectRefToFromDoc(doc) {
+    const byId = new Map(), byNo = new Map();
+    libItems.forEach(it => { byId.set(it.id, it); byNo.set(it.sop_no, it); });
+    libOpenRefDocs.forEach(d => { if (d && d.id && !byId.has(d.id)) byId.set(d.id, d); });
+    const out = [], seen = new Set();
+    (doc && doc.blocks || []).forEach(block => {
+      if (!block || block.type !== 'flowchart') return;
+      ((block.project && block.project.nodes) || []).forEach(node => {
+        if (!node || node.node_type !== 'sop') return;
+        const no = String(node.sop_id || '').trim();
+        const found = (node.ref_document_id && byId.get(node.ref_document_id)) || byNo.get(no);
+        if (!found && !no) return;
+        const key = found ? 'id:' + found.id : 'no:' + no;
+        if (seen.has(key)) return;
+        seen.add(key);
+        out.push(found
+          ? { id: found.id, sop_no: found.sop_no, name: found.name, status: found.status, linked: true }
+          : { id: null, sop_no: no, name: String(node.sop_name || '').trim(), status: '', linked: false });
+      });
+    });
+    return out;
+  }
+
+  // '이 문서가 참조하는 문서' 목록을 다시 계산해 그린다.
+  //   doc 을 주면 그 문서로 계산한다 (문서를 막 열었을 때는 순서도 iframe 이 아직 안 떠서 화면에서 읽을 수 없다).
+  //   주지 않으면 지금 화면의 편집 내용을 읽어서 계산한다 (저장 직후, 목록을 펼칠 때).
+  function libRefreshRefTo(doc) {
+    try { libRefTo = collectRefToFromDoc(doc || (syncStudioFlows(), collectDocumentState())); }
+    catch (e) { console.warn('참조 목록 계산 실패:', e); libRefTo = []; }
+    renderLibRefTo();
+  }
+
+  // 패널의 '이 문서가 참조하는 문서 N건' 접이식 목록 (연결된 문서는 눌러서 열 수 있다)
+  function renderLibRefTo() {
+    const box = document.getElementById('libRefTo');
+    const summary = document.getElementById('libRefToSummary');
+    const listEl = document.getElementById('libRefToList');
+    if (!box || !summary || !listEl) return;
+    if (!libRefTo.length && !libOpenId) { box.hidden = true; listEl.innerHTML = ''; return; }
+    box.hidden = false;
+    summary.textContent = `이 문서가 참조하는 문서 ${libRefTo.length}건`;
+    listEl.innerHTML = '';
+    libRefTo.forEach(d => {
+      const row = document.createElement('div');
+      row.className = 'lib-refby-item' + (d.linked ? '' : ' is-missing');
+      row.tabIndex = 0;
+      const tag = !d.linked ? '미작성' : (d.status === 'retired' ? '폐기' : '');
+      row.title = `${d.sop_no}${d.name ? ' · ' + d.name : ''}${tag ? ' · ' + tag : ''}`;
+      row.innerHTML = '<b></b><span></span><i class="lib-refby-tag"></i>';
+      row.querySelector('b').textContent = d.sop_no || '(번호 없음)';
+      row.querySelector('span').textContent = d.name || (d.linked ? '(이름 없음)' : '');
+      row.querySelector('i').textContent = tag;
+      const open = () => {
+        if (d.linked) libOpenDocumentById(d.id, d.sop_no);
+        else alert(`아직 만들어지지 않은 문서입니다: ${d.sop_no}`);
+      };
+      row.addEventListener('click', open);
+      row.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+      listEl.appendChild(row);
+    });
+  }
+
   function renderLibTree() {
     const tree = document.getElementById('libTree');
     renderHomeList();   // 홈 화면의 카드 목록도 같은 데이터로 함께 갱신
@@ -4054,6 +4113,7 @@ body.studio-home .home-view{display:block}
       if (libOpenId && libLockDocId !== libOpenId) libAcquireLock(libOpenId);   // 새로 만든 문서면 이제부터 편집 잠금을 잡는다
       await libReload();
       libLoadReferencedBy();
+      libRefreshRefTo();   // 상자를 새로 넣었을 수 있으므로 '참조하는 문서' 목록도 갱신
       // 서버가 정리한 SOP 상자 참조(번호·이름 갱신, 승격)를 화면에도 반영하려면 다시 여는 것이 정확하지만,
       // 편집 중인 화면을 흔들지 않기 위해 여기서는 목록만 갱신하고 저장 결과를 안내한다.
       const refs = res?.refs || null;
@@ -4179,10 +4239,12 @@ body.studio-home .home-view{display:block}
     studioDraftPending = false;
     const banner = studioEl('draftBanner'); if (banner) { banner.style.display = 'none'; banner.hidden = true; }
     refreshStudio();
+    setMode('complete');   // 라이브러리에서 연 문서는 먼저 "미리보기" 로 보여 준다 (고치려면 헤더의 [편집])
     scheduleStudioSave();
     renderLibTree();
     syncStudioLibrary();
     libLoadReferencedBy();
+    libRefreshRefTo(rec.doc);
     libDirty = false;   // 서버에서 막 받아 온 그대로이므로 "저장 안 된 변경" 은 없다
     showStudioToast(`${rec.sop_no} 을(를) 열었습니다.`);
   }
@@ -4227,59 +4289,7 @@ body.studio-home .home-view{display:block}
   }
 
   // JSON 파일(들)을 라이브러리로 가져온다. 문서 하나가 실패해도 그 파일의 나머지 문서는 계속 시도하고, 끝에 결과와 실패 이유를 보여 준다.
-  async function libImportFiles(files) {
-    let added = 0, skipped = 0;
-    const failures = [];   // 실패 이유 목록: '번호: 이유'
-    for (const file of files) {
-      let docs = [];
-      try {
-        const parsed = JSON.parse(await file.text());
-        docs = Array.isArray(parsed) ? parsed.map(x => x.doc || x) : (Array.isArray(parsed.items) ? parsed.items.map(x => x.doc || x) : [parsed]);
-      } catch (e) { console.error(e); skipped += 1; failures.push(`${file.name}: JSON 파일을 읽지 못했습니다`); continue; }
-      for (const doc of docs) {
-        if (!doc || doc.format !== SOP_DOC_FORMAT || !Array.isArray(doc.blocks)) { skipped += 1; continue; }
-        const rec = libRecordFromDoc(doc);
-        if (!rec) { skipped += 1; continue; }
-        try {
-          try { await libStore.put(rec); }   // 새 문서로 만들기(POST)
-          catch (e) {
-            // 같은 번호가 이미 있으면 그 문서의 새 버전으로 넣는다 (예전 "덮어쓰기" 와 같은 결과)
-            if (e.status !== 409 || e.code !== 'sop_no_taken' || !e.data?.existing_id) throw e;
-            await libStore.put({ ...rec, id: e.data.existing_id, base_version_no: null });
-          }
-          added += 1;
-        } catch (e) {
-          // 서버가 거절했거나(422 형식 오류, 423 다른 사람이 잠금 등) 통신이 끊긴 경우: 이 문서만 건너뛰고 이유를 모아 둔다
-          console.error(e);
-          skipped += 1;
-          failures.push(`${rec.sop_no}: ${e.message}`);
-        }
-      }
-    }
-    await libReload();
-    const summary = `가져오기 완료 · ${added}건 추가${skipped ? `, ${skipped}건 건너뜀` : ''}`;
-    if (failures.length) alert(`${summary}\n\n실패한 문서:\n${failures.join('\n')}`);
-    else showStudioToast(summary);
-  }
 
-  async function libExportAll() {
-    if (!libItems.length) { alert('내보낼 문서가 없습니다.'); return; }
-    // 목록에는 doc(문서 본문)이 없으므로 한 건씩 서버에서 받아 붙인다
-    const items = [];
-    for (const it of libItems.slice().sort(libSortKey)) {
-      try {
-        const rec = it.id ? await libStore.getById(it.id) : await libStore.get(it.sop_no);
-        items.push({ ...it, doc: rec.doc });
-      } catch (e) { console.error(e); }
-    }
-    if (!items.length) { alert('서버에서 문서를 받아오지 못했습니다.'); return; }
-    const payload = { format: 'sop-studio-library', version: 1, exportedAt: new Date().toISOString(), items };
-    const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = `sop-library-${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
 
   function initLibrary() {
     const toggle = document.getElementById('libToggle');
@@ -4298,14 +4308,11 @@ body.studio-home .home-view{display:block}
 
     initCurrentUserBox();
     document.getElementById('libSearch').addEventListener('input', renderLibTree);
+    document.getElementById('libRefTo').addEventListener('toggle', e => { if (e.target.open) libRefreshRefTo(); });   // 펼칠 때 그 자리에서 다시 계산
     document.getElementById('libNewBtn').addEventListener('click', () => libNewDocument());
     document.getElementById('homeNewBtn').addEventListener('click', () => libNewDocument());   // 홈 화면 안의 같은 버튼
     document.getElementById('homeBtn').addEventListener('click', studioGoHome);
     document.getElementById('libSaveCurrent').addEventListener('click', libSaveCurrent);
-    document.getElementById('libExportAll').addEventListener('click', libExportAll);
-    const picker = document.getElementById('libFilePicker');
-    document.getElementById('libImport').addEventListener('click', () => { picker.value = ''; picker.click(); });
-    picker.addEventListener('change', () => { if (picker.files?.length) libImportFiles(Array.from(picker.files)); });
     document.getElementById('sopId').addEventListener('input', renderLibTree);
     document.getElementById('sopName').addEventListener('input', renderLibTree);
 

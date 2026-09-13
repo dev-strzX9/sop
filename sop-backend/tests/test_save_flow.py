@@ -7,7 +7,7 @@ test_save_flow.py — "저장 → 목록 → 열기" 의 기본 흐름을 시험
   - 두 번 저장하면 버전이 1 → 2 로 올라가고 순서도 노드 행이 버전마다 따로 쌓이는지
   - 저장 주소: 새 문서는 POST /api/sops, 기존 문서는 PUT /api/sops/{id}. 번호 중복 409, 없는 id 404, 번호 불일치 400
   - 잘못된 문서는 막히는지 (422 / 400 / 413), 이상한 노드는 건너뛰고 경고만 남기는지
-  - 폐기(DELETE) 와 복구(restore), 목록 검색(q, area)
+  - 폐기(DELETE) 와 되살리기(다시 저장), 목록 검색(q, area)
   - 폐기된 문서에 저장하면 draft 로 되살아나는지 (교차 결정 D)
   - 사용자 이름 헤더의 %인코딩 한글이 되돌려지는지 (교차 결정 A), GET / 에 api-base meta 가 들어가는지 (교차 결정 B)
   - 같은 문서 동시 저장, examples/sample_doc.json, anonymous 사용자, UUID 아닌 주소, 이상한 숫자 값(inf/nan)
@@ -293,8 +293,8 @@ async def test_unknown_area_becomes_blank_with_warning(client):
     assert items[0]["area"] == ""
 
 
-# 폐기(DELETE)하면 목록에서 사라지고, status=all 로는 보이며, restore 하면 다시 목록에 나온다
-async def test_retire_and_restore(client):
+# 폐기(DELETE)하면 목록에서 사라지고, status=all 로는 보이며, 다시 저장하면 draft 로 되살아난다
+async def test_retire_and_revive_by_saving(client):
     doc = make_doc()
     doc_id = (await save(client, doc)).json()["id"]
 
@@ -312,14 +312,15 @@ async def test_retire_and_restore(client):
     assert len(items_all) == 1
     assert items_all[0]["status"] == "retired"
 
-    # 복구
-    res = await client.post(f"/api/sops/{doc_id}/restore")
-    assert res.status_code == 200
-    assert res.json()["status"] == "draft"
+    # 되살리기: 폐기된 문서에 다시 저장하면 draft 로 돌아온다 (별도 복구 API 는 없다)
+    res = await save(client, doc, base_version_no=1)
+    assert res.status_code == 201
+    assert any("폐기" in w for w in res.json()["warnings"])
 
     items = (await client.get("/api/sops")).json()
     assert len(items) == 1
     assert items[0]["id"] == doc_id
+    assert items[0]["status"] == "draft"
 
 
 # 목록 검색: q 는 SOP 번호/이름의 일부로 찾고, area 는 적용 AREA 로 거른다

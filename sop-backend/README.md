@@ -23,13 +23,11 @@ sop-backend/
       sops.py            문서 목록 / 열기 / 저장(POST·PUT) / 번호 변경(PATCH) / 폐기 / 복구 / referenced-by
       versions.py        버전 목록 / 특정 버전 열기 / 두 버전 비교(diff)
       locks.py           편집 잠금(한 번에 한 명만 편집)
-      drafts.py          자동 임시 저장(버전 안 쌓임)
       common.py          라우터들이 같이 쓰는 도우미(404 확인, 살아 있는 잠금, 열기 응답의 번호 보정)
     tools/
       dev_server.py      도커·PostgreSQL 설치 없이 내 PC 에서 서버 띄우기 (내장 PostgreSQL 사용)
       apply_schema.py    DB 에 표 만들기 / 기존 DB 갱신(마이그레이션). --dry-run 지원
       flow_editor.py     SOP_STUDIO.html 안에 접혀 있는 순서도 편집기를 꺼내고(extract) 다시 넣기(embed)
-      import_library.py  예전 브라우저 데이터(전체 내보내기 JSON)를 서버로 옮기는 명령줄 도구
   sql/
     sop_schema.sql       DB 표 정의 전체 (새 설치용)
     migrations/001_…sql  이미 있는 DB 에 적용하는 부분 갱신 (멱등 = 여러 번 실행해도 안전)
@@ -252,16 +250,12 @@ DB 가 **처음** 만들어질 때만 `sql/sop_schema.sql` 이 자동 실행됩�
 | PUT | `/api/sops/{doc_id}` | **기존 문서에 새 버전 추가**. 폐기된 문서였으면 draft 로 되살림 | 201 | `not_found` `version_conflict` `sop_no_mismatch` `invalid_document` |
 | PATCH | `/api/sops/{doc_id}/number` | **SOP 번호만 변경** (버전은 손대지 않음). body `{"sop_no": "새번호", "user": ""}` | 200 | `not_found` `locked` `sop_no_taken` `invalid_document` |
 | DELETE | `/api/sops/{doc_id}` | 폐기(`status=retired`). 행은 지우지 않음. 응답에 `referenced_by`(참조하는 문서 수) | 200 | `not_found` |
-| POST | `/api/sops/{doc_id}/restore` | 폐기 취소(`status=draft`) | 200 | `not_found` |
 | GET | `/api/sops/{doc_id}/referenced-by` | 이 문서를 (현재 버전 순서도에서) 참조하는 다른 문서 목록 | 200 | `not_found` |
 | GET | `/api/sops/{doc_id}/versions` | 버전 목록 (최신부터, `content` 없음) | 200 | `not_found` |
 | GET | `/api/sops/{doc_id}/versions/{version_no}` | 특정 버전 열기 (열기 응답과 같은 모양) | 200 | `not_found` `version_not_found` |
 | GET | `/api/sops/{doc_id}/versions/{a}/diff/{b}` | 두 버전의 순서도 노드 차이 `{added, removed, changed}` | 200 | `not_found` `version_not_found` |
 | POST | `/api/sops/{doc_id}/lock` | 편집 잠금 잡기 / 연장. body `{"user": "", "ttl_sec": 120}` (10~3600초) | 200 | `not_found` `locked` |
 | DELETE | `/api/sops/{doc_id}/lock` | 내 잠금 풀기. 누구인지는 body `user` → `?user=` → 헤더 순. 남의 잠금이면 아무 일 없이 200 | 200 | `not_found` |
-| PUT | `/api/sops/{doc_id}/draft` | 자동 임시 저장(덮어쓰기, 버전 안 쌓임). body `{"user": "", "content": {...}}` | 200 | `not_found` |
-| GET | `/api/sops/{doc_id}/draft?user=` | 내 임시본 읽기 | 200 | `not_found` `draft_not_found` |
-| DELETE | `/api/sops/{doc_id}/draft?user=` | 내 임시본 지우기 (없어도 200) | 200 | `not_found` |
 
 어느 주소든 공통으로 `payload_too_large`(413), `validation_error`(422), `http_error`(없는 주소 404·허용 안 된 메서드 405), `internal_error`(500) 이 날 수 있습니다. 전체 목록은 10-1절.
 
@@ -334,7 +328,6 @@ curl -X DELETE "http://localhost:8000/api/sops/$DOC_ID/lock?user=hong"
 # 8) 폐기 → 목록에서 사라짐 → 복구
 curl -X DELETE http://localhost:8000/api/sops/$DOC_ID          # {"id":"...","status":"retired","referenced_by":0}
 curl "http://localhost:8000/api/sops?status=retired"           # 여기엔 보임
-curl -X POST http://localhost:8000/api/sops/$DOC_ID/restore
 
 # 9) 버전 목록 / 특정 버전 / 비교
 curl http://localhost:8000/api/sops/$DOC_ID/versions
@@ -411,7 +404,7 @@ curl -H "X-User: $(python -c 'import urllib.parse; print(urllib.parse.quote("홍
 
 - 회사 SSO 를 붙이면 프록시가 넣어 주는 헤더 이름을 `USER_HEADER` 로 지정합니다(4-7절). 그 경우 편집기가 보내는 `X-User` 는 무시되고 SSO 값이 쓰입니다.
 
-## 9. 개발자용: 테스트 · 편집기 소스 수정 · 데이터 이관
+## 9. 개발자용: 테스트 · 편집기 소스 수정
 
 ### 9-1. 테스트
 
@@ -437,17 +430,6 @@ python -m app.tools.flow_editor check     # 4) 넣은 결과를 다시 풀었을
 
 `SOP_STUDIO.html` 의 Base64 줄을 직접 편집하지 마세요. 그 파일의 나머지 부분(라이브러리 패널 등)은 보통 파일처럼 고치면 됩니다.
 
-### 9-3. 예전 브라우저 데이터 이관 (import_library)
-
-편집기 사이드바의 "전체 내보내기" 로 받은 JSON 파일(예전 IndexedDB 에 쌓여 있던 문서들)을 서버로 한꺼번에 옮깁니다. 서버를 켜 둔 상태에서:
-
-```bash
-# .venv 활성화 후
-python -m app.tools.import_library sop-library-2026-09-09.json --api http://localhost:8000 --user hong
-```
-
-문서마다 먼저 POST `/api/sops` 로 새 문서를 만들어 보고, 서버가 409 `sop_no_taken` 을 주면 그 문서의 id 로 PUT `/api/sops/{id}` 를 불러 새 버전을 쌓습니다. 끝나면 "성공 N건 / 건너뜀 M건 / 실패 K건" 을 보여 줍니다(건너뜀 = 편집기 문서가 아니거나 번호가 빈 것, 실패 = 서버 오류와 그 메시지). 문서 하나만 든 파일이나 문서 배열 파일도 읽습니다. `--api` 기본값은 `http://localhost:8000`, `--user` 기본값은 `import` 입니다.
-
 ## 10. 문제 해결
 
 ### 10-1. 오류 응답 형식과 code 표
@@ -463,7 +445,6 @@ python -m app.tools.import_library sop-library-2026-09-09.json --api http://loca
 | 400 | `sop_no_mismatch` | PUT 에서 `doc.sop.id` 가 서버에 저장된 번호와 다름 | `stored_sop_no`, `doc_sop_no`. 번호를 바꾸려면 PATCH `/number` 먼저 |
 | 404 | `not_found` | 그 id/번호의 문서가 없음 (버전이 하나도 없는 문서 포함) | |
 | 404 | `version_not_found` | 그 문서에 그 번호의 버전이 없음 | `version_no` |
-| 404 | `draft_not_found` | 그 사용자의 임시 저장본이 없음 (편집기는 "복구할 것 없음" 으로 봄) | `user` |
 | 404 | `static_not_found` | `/` 로 접속했는데 편집기 HTML 파일이 없음 | `STATIC_DIR` / `STATIC_INDEX` 확인 |
 | 404·405 | `http_error` | 없는 주소, 허용 안 된 메서드 등 프레임워크가 내는 오류 | 주소 오타, `ROOT_PATH` 접두어 불일치 의심 |
 | 409 | `sop_no_taken` | POST 의 번호가 이미 있음 / PATCH 의 새 번호를 다른 문서가 씀 | `existing_id`. 그 id 로 PUT 하면 새 버전으로 저장됨 |
