@@ -10,8 +10,10 @@ main.py — FastAPI 앱의 출발점.
   6. 편집기 HTML 파일을 "/" 에서 보여 준다. 이때 <head> 바로 뒤에 <meta name="api-base" content="{ROOT_PATH}"> 를
      끼워 넣어, 서버가 "/sop" 같은 접두어 뒤에서 돌 때 프론트가 API 주소 앞에 그 접두어를 붙일 수 있게 한다.
 
-실행:  uvicorn app.main:app --reload
+실행:  python app.py  (회사 컨테이너 규칙. 내 PC 에서 DB 없이 띄우려면 python -m app.tools.dev_server)
 회사 환경: ROOT_PATH=/sop 처럼 접두어 뒤에서 돌 때는 환경변수만 주면 됩니다 (config.py 참고).
+
+처음 읽는 분께: async / await / Depends / yield 같은 낯선 문법은 README 의 "코드 읽기 전에" 절에 한 줄씩 설명해 두었습니다.
 """
 
 import logging

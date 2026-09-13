@@ -6,6 +6,7 @@ SOP Studio 편집기(브라우저)와 그 문서를 PostgreSQL 에 버전 단위
 
 ```
 sop/
+  app.py          시작 버튼 — 컨테이너가 켜지면 이 파일이 실행됨 (ENTRYPOINT ["python", "app.py"])
   app/            서버 코드 (FastAPI)
   static/         편집기 화면 (SOP_STUDIO.html — 서버가 "/" 에서 내려줌)
   sql/            DB 표 설계도 (sop_schema.sql) + 변경분 (migrations/)
@@ -32,6 +33,7 @@ sop/
    docker run -p 8000:8000 -e DATABASE_URL='postgresql://...' sop-studio
    ```
    HCP 에서는 이미지를 올린 뒤 아래 환경변수를 설정하고, 포트는 `PORT`(기본 8000)를 씁니다.
+   컨테이너는 회사 규칙대로 `python app.py` 로 시작합니다(Dockerfile 의 ENTRYPOINT). 파이썬이 있는 PC 라면 같은 명령으로 바로 띄워 볼 수도 있습니다.
 4. 브라우저에서 서비스 주소를 열면 문서 목록(홈)이 뜹니다.
 
 ## 2. 환경변수 (전부 `app/config.py` 가 읽음)

@@ -23,6 +23,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # 4. 우리 코드와 편집기 HTML, DB 스키마·마이그레이션 복사
+COPY app.py .
 COPY app/ ./app/
 COPY static/ ./static/
 COPY sql/ ./sql/
@@ -43,9 +44,7 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD python -c "import os,urllib.request; urllib.request.urlopen('http://127.0.0.1:' + os.environ.get('PORT','8000') + '/health', timeout=4)" || exit 1
 
-# 8. 상자가 켜지면 실행할 명령: uvicorn 으로 FastAPI 앱 띄우기
-#    --host 0.0.0.0            상자 바깥에서도 접속 허용
-#    --proxy-headers           앞단 프록시가 넣는 X-Forwarded-For / X-Forwarded-Proto 를 믿음 (https 주소 계산 등)
-#    --forwarded-allow-ips="*" 어느 프록시에서 오든 그 헤더를 믿음 (컨테이너 앞은 항상 회사 프록시이므로)
-#    (sh -c 를 쓰는 이유: ${PORT} 환경변수를 실행 시점에 풀어 넣기 위해)
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips='*'"]
+# 8. 상자가 켜지면 실행할 명령: python app.py (회사 규칙과 같은 모양)
+#    ENTRYPOINT = "이 상자는 무조건 이 프로그램을 돌린다" 는 고정 명령. 포트·프록시 설정은 app.py 안에서 환경변수로 읽습니다.
+#    배열 형태로 적으면 파이썬이 상자의 1번 프로세스가 되어 종료 신호(SIGTERM)를 직접 받습니다 → 깔끔하게 종료됩니다.
+ENTRYPOINT ["python", "app.py"]

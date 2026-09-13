@@ -1678,9 +1678,6 @@ body.studio-home .home-view{display:block}
     return Math.max(min, Math.min(max, n));
   }
 
-  function getActivityCellText(block, r, c) {
-    return block?._activityData?.cells?.[r]?.[c] ?? '';
-  }
 
   function syncActivityDataFromDom(block) {
     if (!block || block.dataset.blockType !== 'activity') return;
@@ -2600,53 +2597,7 @@ body.studio-home .home-view{display:block}
     return `${base}_${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}.json`;
   }
 
-  function exportDocumentJson() {
-    const state = collectDocumentState();
-    if(state.blocks.some(b=>b.type==='flowchart'&&!b.project)){alert('순서도가 준비 중입니다. 잠시 후 다시 저장하세요.');return;}
-    if (!state.blocks.length) {
-      alert('저장할 Block이 없습니다.');
-      return;
-    }
-    const blob = new Blob([JSON.stringify(state, null, 2)], { type:'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = buildDocumentFileName(state.sop);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
 
-  function importDocumentJson(file) {
-    const reader = new FileReader();
-    reader.onerror = () => alert('파일을 읽지 못했습니다.');
-    reader.onload = () => {
-      let state;
-      try {
-        state = JSON.parse(String(reader.result));
-      } catch (error) {
-        alert('JSON을 해석하지 못했습니다. 파일이 손상되었을 수 있습니다.');
-        return;
-      }
-      if (state?.format === 'sop-ingestion-package') state = state.source;
-      if (!state || state.format !== SOP_DOC_FORMAT || !Array.isArray(state.blocks)) {
-        alert('이 편집기에서 저장한 문서 파일이 아닙니다.');
-        return;
-      }
-      if (state.version > SOP_DOC_VERSION) {
-        alert('더 새로운 버전에서 저장한 파일입니다. 일부 내용이 빠질 수 있습니다.');
-      }
-      if (visibleBlocks().length && !confirm('현재 편집 중인 문서를 덮어씁니다. 계속할까요?')) return;
-      try {
-        restoreDocumentState(state);
-      } catch (error) {
-        console.error(error);
-        alert('문서를 복원하지 못했습니다.');
-      }
-    };
-    reader.readAsText(file);
-  }
 
   function setMode(mode) {
     editorMode = mode;
