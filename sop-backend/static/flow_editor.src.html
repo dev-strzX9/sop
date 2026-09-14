@@ -337,6 +337,50 @@
       background-image: none;
     }
 
+    /* 페이지 구획선: 본문 템플릿과 같은 3열(제목 | 내용 | 본문)·2행(머리말 | 내용) 레이아웃.
+       바깥 테두리는 그대로 두고, 안쪽 선만 드래그해서 열 너비·행 높이를 바꾼다. */
+    .page-guide {
+      position: absolute;
+      background: #414347;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .page-guide.v { top: 0; width: 2px; height: 100%; }
+    .page-guide.h { left: 0; height: 2px; width: 100%; }
+    .page-guide-handle {
+      position: absolute;
+      z-index: 1;
+      touch-action: none;
+    }
+    .page-guide-handle.v { top: 0; width: 18px; height: 100%; cursor: col-resize; }
+    .page-guide-handle.h { left: 0; height: 18px; width: 100%; cursor: row-resize; }
+    .page-guide-handle:hover + .page-guide,
+    .page-guide-handle.dragging + .page-guide { background: #dd3f23; }
+    body.embed-complete .page-guide-handle { display: none !important; }
+
+    /* 머리말 행의 글자 칸: 왼쪽 "제목" 라벨 · 가운데 제목 입력 · 오른쪽 "본문" 라벨 (본문 템플릿과 같은 구성) */
+    .page-head-cell {
+      position: absolute;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;     /* 자식 블록이 칸 너비를 채워야 바깥 툴바의 가운데/오른쪽 정렬이 보인다 */
+      justify-content: center;
+      padding: 20px 30px;
+      font-size: 34px;
+      line-height: 1.4;
+      color: #1b1c1d;
+      outline: none;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow: hidden;
+      cursor: text;
+    }
+    .page-head-cell.label { font-weight: 800; }
+    .page-head-cell.title { font-weight: 700; }
+    .page-head-cell:empty::before { content: attr(data-placeholder); color: #a2a5aa; font-weight: 500; }
+    body:not(.embed-complete) .page-head-cell { box-shadow: inset 0 0 0 2px rgba(37, 99, 235, 0.24); background: #fdfdfd; }
+    body.embed-complete .page-head-cell { pointer-events: none; box-shadow: none; background: transparent; }
+
     .edge-visible {
       fill: none;
       stroke: #414347;
@@ -1101,6 +1145,12 @@ button.panel-collapse-tab:focus-visible{outline-color:#ff7a00}
               </marker>
             </defs>
           </svg>
+          <div class="page-head-cell label" data-head="left" contenteditable="true" spellcheck="false" data-placeholder="머리말">제목</div>
+          <div class="page-head-cell title" data-head="title" contenteditable="true" spellcheck="false" data-placeholder="제목 입력"></div>
+          <div class="page-head-cell label" data-head="right" contenteditable="true" spellcheck="false" data-placeholder="머리말">본문</div>
+          <div class="page-guide-handle v" data-guide="left" title="드래그하여 제목 열 너비 조절"></div><div class="page-guide v" id="guideLeft"></div>
+          <div class="page-guide-handle v" data-guide="right" title="드래그하여 본문 열 너비 조절"></div><div class="page-guide v" id="guideRight"></div>
+          <div class="page-guide-handle h" data-guide="top" title="드래그하여 머리말 행 높이 조절"></div><div class="page-guide h" id="guideTop"></div>
         </div>
       </div>
     </main>
@@ -1152,6 +1202,189 @@ button.panel-collapse-tab:focus-visible{outline-color:#ff7a00}
 
     const WORKSPACE_WIDTH = 1920;   // 16:9 페이지 (PPT 슬라이드 기준)
     const WORKSPACE_HEIGHT = 1080;
+
+    // 페이지 구획선 위치(페이지 px). left/right = 좌우 열 너비, top = 머리말 행 높이.
+    // 본문 템플릿(190px / 250px / 92px 행)을 1920px 페이지 비율로 옮긴 값이 기본값.
+    const DEFAULT_PAGE_LAYOUT = { left: 330, right: 430, top: 160 };
+    const GUIDE_MIN_SIDE = 120;   // 좌우 열 최소 너비
+    const GUIDE_MIN_MID = 400;    // 가운데 내용 열 최소 너비
+    const GUIDE_MIN_ROW = 80;     // 각 행 최소 높이
+    let pageLayout = { ...DEFAULT_PAGE_LAYOUT };
+    // 머리말 행 글자. 순수 텍스트만 저장한다.
+    const DEFAULT_PAGE_HEAD = { left: "제목", title: "", right: "본문" };
+    let pageHead = { ...DEFAULT_PAGE_HEAD };
+
+    // 머리말 글자는 바깥 문서의 텍스트 툴바(굵게·색·정렬 등)가 손대므로 HTML 로 저장한다.
+    // 저장/복원 시 글자 서식 태그만 남기고 나머지는 벗긴다.
+    const HEAD_ALLOWED_TAGS = new Set(["B", "I", "U", "S", "STRIKE", "STRONG", "EM", "SPAN", "FONT", "DIV", "P", "BR"]);
+    const HEAD_ALLOWED_STYLES = ["font-size", "font-family", "font-weight", "font-style", "text-decoration", "text-decoration-line", "color", "background-color", "text-align"];
+    function sanitizeHeadHtml(html) {
+      const tpl = document.createElement("template");
+      tpl.innerHTML = String(html ?? "");
+      const walk = parent => {
+        Array.from(parent.childNodes).forEach(node => {
+          if (node.nodeType === 3) return;
+          if (node.nodeType !== 1) { node.remove(); return; }
+          if (!HEAD_ALLOWED_TAGS.has(node.tagName)) {
+            walk(node);
+            while (node.firstChild) parent.insertBefore(node.firstChild, node);
+            node.remove();
+            return;
+          }
+          Array.from(node.attributes).forEach(attr => {
+            if (!["style", "color", "face", "size"].includes(attr.name)) node.removeAttribute(attr.name);
+          });
+          if (node.hasAttribute("style")) {
+            const kept = HEAD_ALLOWED_STYLES.map(k => { const v = node.style.getPropertyValue(k); return v ? `${k}:${v}` : ""; }).filter(Boolean);
+            if (kept.length) node.setAttribute("style", kept.join(";")); else node.removeAttribute("style");
+          }
+          walk(node);
+        });
+      };
+      walk(tpl.content);
+      return tpl.innerHTML;
+    }
+
+    function normalizePageHead(raw) {
+      if (!raw || typeof raw !== "object") return { ...DEFAULT_PAGE_HEAD };
+      const str = (v, d) => (typeof v === "string" ? sanitizeHeadHtml(v) : d);
+      return { left: str(raw.left, DEFAULT_PAGE_HEAD.left), title: str(raw.title, ""), right: str(raw.right, DEFAULT_PAGE_HEAD.right) };
+    }
+
+    function renderPageHead() {
+      document.querySelectorAll(".page-head-cell").forEach(el => {
+        const value = sanitizeHeadHtml(pageHead[el.dataset.head] ?? "");
+        if (el.innerHTML !== value) el.innerHTML = value;
+      });
+    }
+
+    // 내보내기용: 서식을 뺀 글자와 정렬(왼쪽/가운데/오른쪽)만 뽑는다.
+    function pageHeadPlain(key) {
+      const d = document.createElement("div");
+      d.innerHTML = pageHead[key] || "";
+      return (d.textContent || "").replace(/\s+/g, " ").trim();
+    }
+    function pageHeadAlign(key) {
+      const d = document.createElement("div");
+      d.innerHTML = pageHead[key] || "";
+      const block = d.querySelector('[style*="text-align"]');
+      const align = block ? block.style.textAlign : "";
+      return align === "center" || align === "right" ? align : "left";
+    }
+
+    function pageHeadCellRects() {
+      const L = pageLayout.left, R = WORKSPACE_WIDTH - pageLayout.right, T = pageLayout.top;
+      return {
+        left:  { x: 2, y: 2, w: L - 3, h: T - 3 },
+        title: { x: L + 1, y: 2, w: R - L - 2, h: T - 3 },
+        right: { x: R + 1, y: 2, w: WORKSPACE_WIDTH - R - 3, h: T - 3 }
+      };
+    }
+
+    function normalizePageLayout(raw) {
+      const num = (v, d) => (Number.isFinite(Number(v)) ? Number(v) : d);
+      const left = Math.max(GUIDE_MIN_SIDE, num(raw?.left, DEFAULT_PAGE_LAYOUT.left));
+      const right = Math.max(GUIDE_MIN_SIDE, Math.min(WORKSPACE_WIDTH - left - GUIDE_MIN_MID, num(raw?.right, DEFAULT_PAGE_LAYOUT.right)));
+      const top = Math.max(GUIDE_MIN_ROW, Math.min(WORKSPACE_HEIGHT - GUIDE_MIN_ROW, num(raw?.top, DEFAULT_PAGE_LAYOUT.top)));
+      return { left, right, top };
+    }
+
+    function applyPageLayout() {
+      const workspace = document.getElementById("workspace");
+      if (!workspace) return;
+      const rightX = WORKSPACE_WIDTH - pageLayout.right;
+      const place = (selector, prop, value, size) => {
+        const el = workspace.querySelector(selector);
+        if (el) el.style[prop] = `${value - size / 2}px`;
+      };
+      place("#guideLeft", "left", pageLayout.left, 2);
+      place("#guideRight", "left", rightX, 2);
+      place("#guideTop", "top", pageLayout.top, 2);
+      place('.page-guide-handle[data-guide="left"]', "left", pageLayout.left, 18);
+      place('.page-guide-handle[data-guide="right"]', "left", rightX, 18);
+      place('.page-guide-handle[data-guide="top"]', "top", pageLayout.top, 18);
+      const rects = pageHeadCellRects();
+      workspace.querySelectorAll(".page-head-cell").forEach(el => {
+        const r = rects[el.dataset.head];
+        if (!r) return;
+        el.style.left = `${r.x}px`; el.style.top = `${r.y}px`;
+        el.style.width = `${r.w}px`; el.style.height = `${r.h}px`;
+      });
+    }
+
+    function initPageHead() {
+      document.querySelectorAll(".page-head-cell").forEach(el => {
+        el.addEventListener("input", () => { pageHead[el.dataset.head] = el.innerHTML; });
+        // 붙여넣기는 서식 없이 글자만
+        el.addEventListener("paste", event => {
+          event.preventDefault();
+          document.execCommand("insertText", false, (event.clipboardData || window.clipboardData).getData("text"));
+        });
+      });
+      renderPageHead();
+      initPageHeadSelectionBridge();
+    }
+
+    // 바깥 문서(SOP_STUDIO)의 텍스트 툴바가 이 iframe 안 머리말 칸에도 적용되도록,
+    // 머리말 칸 안에서 일어난 선택 변화를 부모 창에 알린다. (srcdoc iframe 이라 같은 출처)
+    function initPageHeadSelectionBridge() {
+      if (window.parent === window) return;
+      let reported = false;
+      const notify = value => {
+        try { window.parent.__studioTextSelection?.(value); } catch (e) {}
+      };
+      document.addEventListener("selectionchange", () => {
+        const sel = window.getSelection();
+        const node = sel && sel.rangeCount ? sel.getRangeAt(0).startContainer : null;
+        const el = node ? (node.nodeType === 1 ? node : node.parentElement) : null;
+        if (el && el.closest(".page-head-cell")) { reported = true; notify(window); }
+        else if (reported) { reported = false; notify(null); }
+      });
+      document.addEventListener("mousedown", event => {
+        if (reported && !event.target?.closest?.(".page-head-cell")) { reported = false; notify(null); }
+      });
+    }
+
+    // 구획선 드래그: 마우스 이동량을 현재 배율로 나눠 페이지 px로 바꾼다. 바깥 테두리는 움직이지 않는다.
+    function initPageGuides() {
+      document.querySelectorAll(".page-guide-handle").forEach(handle => {
+        handle.addEventListener("pointerdown", event => {
+          if (document.body.classList.contains("embed-complete")) return;
+          event.preventDefault();
+          event.stopPropagation();
+          const key = handle.dataset.guide;
+          const startX = event.clientX;
+          const startY = event.clientY;
+          const start = { ...pageLayout };
+          handle.classList.add("dragging");
+          try { handle.setPointerCapture(event.pointerId); } catch (e) {}
+
+          const onMove = moveEvent => {
+            const dx = (moveEvent.clientX - startX) / zoomLevel;
+            const dy = (moveEvent.clientY - startY) / zoomLevel;
+            const next = { ...start };
+            if (key === "left") next.left = start.left + dx;
+            else if (key === "right") next.right = start.right - dx;   // 오른쪽 열은 왼쪽으로 끌수록 넓어진다
+            else if (key === "top") next.top = start.top + dy;
+            // 왼쪽 열은 오른쪽 열·가운데 열 최소치를 넘지 않게 따로 묶는다
+            if (key === "left") next.left = Math.min(next.left, WORKSPACE_WIDTH - start.right - GUIDE_MIN_MID);
+            pageLayout = normalizePageLayout(next);
+            applyPageLayout();
+          };
+          const onUp = upEvent => {
+            handle.classList.remove("dragging");
+            try { handle.releasePointerCapture(upEvent.pointerId); } catch (e) {}
+            handle.removeEventListener("pointermove", onMove);
+            handle.removeEventListener("pointerup", onUp);
+            handle.removeEventListener("pointercancel", onUp);
+          };
+          handle.addEventListener("pointermove", onMove);
+          handle.addEventListener("pointerup", onUp);
+          handle.addEventListener("pointercancel", onUp);
+        });
+      });
+      applyPageLayout();
+    }
     const MIN_ZOOM = 0.3;
     const MAX_ZOOM = 2;
 
@@ -2672,6 +2905,8 @@ button.panel-collapse-tab:focus-visible{outline-color:#ff7a00}
         nodes,
         edges,
         counters,
+        pageLayout: { ...pageLayout },
+        pageHead: { ...pageHead },
         ui: {
           zoomLevel,
           panelWidth: getPanelWidth(),
@@ -2708,6 +2943,10 @@ button.panel-collapse-tab:focus-visible{outline-color:#ff7a00}
       syncCountersFromNodes();
       zoomLevel = project.ui?.zoomLevel || 1;
       gridVisible = project.ui?.gridVisible !== false;
+      pageLayout = normalizePageLayout(project.pageLayout);   // 예전 문서에는 없다 → 기본값
+      pageHead = normalizePageHead(project.pageHead);
+      applyPageLayout();
+      renderPageHead();
       if (project.ui?.panelWidth) setPanelWidth(project.ui.panelWidth);
       selectedNodeKey = null;
       selectedEdgeKey = null;
@@ -2734,6 +2973,10 @@ button.panel-collapse-tab:focus-visible{outline-color:#ff7a00}
       selectedEdgeKey = null;
       connectionDraft = null;
       gridVisible = true;
+      pageLayout = { ...DEFAULT_PAGE_LAYOUT };
+      pageHead = { ...DEFAULT_PAGE_HEAD };
+      applyPageLayout();
+      renderPageHead();
       Object.keys(counters).forEach(key => { counters[key] = 0; });
       document.getElementById("jsonOutput").value = "";
       renderSopInfoPanel();
@@ -2797,10 +3040,34 @@ button.panel-collapse-tab:focus-visible{outline-color:#ff7a00}
           drawExportNode(ctx, node, minX, minY);
         }
 
-        // 페이지 외곽 경계선
+        // 페이지 구획선 + 외곽 경계선
         ctx.strokeStyle = "#334155";
         ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(pageLayout.left, 0); ctx.lineTo(pageLayout.left, height);
+        ctx.moveTo(width - pageLayout.right, 0); ctx.lineTo(width - pageLayout.right, height);
+        ctx.moveTo(0, pageLayout.top); ctx.lineTo(width, pageLayout.top);
+        ctx.stroke();
         ctx.strokeRect(1, 1, width - 2, height - 2);
+
+        // 머리말 행 글자
+        const headRects = pageHeadCellRects();
+        ctx.fillStyle = "#1b1c1d";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        for (const key of ["left", "title", "right"]) {
+          const text = pageHeadPlain(key);
+          if (!text) continue;
+          const r = headRects[key];
+          const align = pageHeadAlign(key);
+          ctx.font = `${key === "title" ? 700 : 800} 34px "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif`;
+          ctx.textAlign = align;
+          const tx = align === "center" ? r.x + r.w / 2 : align === "right" ? r.x + r.w - 30 : r.x + 30;
+          ctx.save();
+          ctx.beginPath(); ctx.rect(r.x, r.y, r.w, r.h); ctx.clip();
+          ctx.fillText(text, tx, r.y + r.h / 2);
+          ctx.restore();
+        }
 
         canvas.toBlob(pngBlob => {
           if (!pngBlob) {
@@ -3421,6 +3688,8 @@ button.panel-collapse-tab:focus-visible{outline-color:#ff7a00}
     });
 
     initPanelResizer();
+    initPageGuides();
+    initPageHead();
     renderSopInfoPanel();
     applyNodeSidebarState();
     applyPropertyPanelState();
@@ -3507,6 +3776,7 @@ button.panel-collapse-tab:focus-visible{outline-color:#ff7a00}
       }
 
       document.body.classList.toggle('embed-complete', enteringComplete);
+      document.querySelectorAll('.page-head-cell').forEach(el => { el.contentEditable = enteringComplete ? 'false' : 'true'; });
 
       if (enteringComplete) {
         selectedNodeKey = null;
@@ -3581,6 +3851,19 @@ button.panel-collapse-tab:focus-visible{outline-color:#ff7a00}
       const items = [];
       const LINE_COLOR = "111111";
       const EDGE_COLOR = "374151";
+
+      // ---- 페이지 구획선 (맨 아래) ----
+      const guideX2 = WORKSPACE_WIDTH - pageLayout.right;
+      items.push({ kind: "line", x1: pageLayout.left, y1: 0, x2: pageLayout.left, y2: WORKSPACE_HEIGHT, color: "334155", width: 1.5, arrow: false });
+      items.push({ kind: "line", x1: guideX2, y1: 0, x2: guideX2, y2: WORKSPACE_HEIGHT, color: "334155", width: 1.5, arrow: false });
+      items.push({ kind: "line", x1: 0, y1: pageLayout.top, x2: WORKSPACE_WIDTH, y2: pageLayout.top, color: "334155", width: 1.5, arrow: false });
+      const headRects = pageHeadCellRects();
+      for (const key of ["left", "title", "right"]) {
+        const text = pageHeadPlain(key);
+        if (!text) continue;
+        const r = headRects[key];
+        items.push({ kind: "text", text, x: r.x + 30, y: r.y, w: Math.max(10, r.w - 60), h: r.h, fontSize: 34, bold: true, color: "1B1C1D", align: pageHeadAlign(key), valign: "middle" });
+      }
 
       // ---- 연결선 (노드 아래에 깔리도록 먼저) ----
       for (const edge of edges) {
