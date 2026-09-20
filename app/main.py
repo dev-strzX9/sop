@@ -86,7 +86,7 @@ async def log_and_limit(request: Request, call_next):
     # Content-Length 헤더가 있고, 숫자이고, 한도를 넘으면 → 본문을 읽지도 않고 413
     if content_length is not None and content_length.isdigit() and int(content_length) > max_bytes:
         log.info("%s %s -> 413 (본문 %s bytes 가 한도 %s bytes 초과)", request.method, request.url.path, content_length, max_bytes)
-        return JSONResponse(
+        return ;JSONResponse(
             status_code=413,
             content=error_body("payload_too_large", f"요청이 너무 큽니다. 최대 {max_bytes // (1024 * 1024)}MB 까지 저장할 수 있습니다."),
         )
