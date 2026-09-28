@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SOP Studio 백엔드 레퍼런스</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#F3F5F7; --surface:#FFFFFF; --ink:#1B2430; --muted:#5E6B7A; --line:#D6DCE3;
+  --accent:#1F6F8B; --accent-ink:#FFFFFF; --accent-soft:#E1EEF3;
+  --warn:#B8650F; --warn-soft:#FBEEDC; --ok:#2E7D4F; --ok-soft:#E2F1E7;
+  --code-bg:#E9EDF1; --code-ink:#1B2430;
+  --doc:#7A4DB3; --doc-soft:#EFE7F8; --ver:#1F6F8B; --ver-soft:#E1EEF3;
+  --node:#8A6D1F; --node-soft:#F6EFD9; --lock:#A03A5C; --lock-soft:#F8E4EB;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#10161D; --surface:#171F28; --ink:#E6EBF0; --muted:#98A5B3; --line:#2A3542;
+    --accent:#5FB3CF; --accent-ink:#0B1A21; --accent-soft:#16303A;
+    --warn:#E9A24F; --warn-soft:#3A2A14; --ok:#6CC58F; --ok-soft:#173224;
+    --code-bg:#0C1218; --code-ink:#DCE4EC;
+    --doc:#B592E6; --doc-soft:#2A2038; --ver:#5FB3CF; --ver-soft:#16303A;
+    --node:#D9B45A; --node-soft:#33290F; --lock:#E288A6; --lock-soft:#3A1E29;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10161D; --surface:#171F28; --ink:#E6EBF0; --muted:#98A5B3; --line:#2A3542;
+  --accent:#5FB3CF; --accent-ink:#0B1A21; --accent-soft:#16303A;
+  --warn:#E9A24F; --warn-soft:#3A2A14; --ok:#6CC58F; --ok-soft:#173224;
+  --code-bg:#0C1218; --code-ink:#DCE4EC;
+  --doc:#B592E6; --doc-soft:#2A2038; --ver:#5FB3CF; --ver-soft:#16303A;
+  --node:#D9B45A; --node-soft:#33290F; --lock:#E288A6; --lock-soft:#3A1E29;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:"Noto Sans KR",-apple-system,"Apple SD Gothic Neo",sans-serif;font-size:15px;line-height:1.7;margin:0;padding-block:0 64px;padding-inline:16px}
+code,pre,kbd,.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace}
+code{background:var(--code-bg);color:var(--code-ink);padding:.1em .4em;border-radius:4px;font-size:.88em}
+pre{background:var(--code-bg);color:var(--code-ink);padding:14px 16px;border-radius:8px;overflow-x:auto;font-size:.85em;line-height:1.55;margin:12px 0}
+pre code{background:none;padding:0;font-size:1em}
+a{color:var(--accent)}
+h1,h2,h3,h4{text-wrap:balance;line-height:1.25;margin:0}
+h1{font-size:clamp(26px,4vw,38px);font-weight:700;letter-spacing:-.01em}
+h2{font-size:23px;font-weight:700;margin-top:64px;padding-top:28px;border-top:2px solid var(--line)}
+h2 .part{display:block;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);font-weight:500;margin-bottom:6px}
+h3{font-size:17px;font-weight:700;margin-top:36px;padding-top:14px;border-top:1px solid var(--line)}
+h4{font-size:14.5px;font-weight:700;margin-top:20px}
+p{margin:12px 0;max-width:70ch}
+ul,ol{max-width:70ch;padding-left:1.4em}
+li{margin:4px 0}
+.wrap{max-width:1140px;margin:0 auto;display:grid;grid-template-columns:210px minmax(0,1fr);gap:40px}
+@media (max-width:820px){.wrap{grid-template-columns:1fr;gap:0}}
+nav{position:sticky;top:env(safe-area-inset-top,0px);align-self:start;padding-top:40px;font-size:13px;max-height:calc(100vh - env(safe-area-inset-top,0px));overflow-y:auto}
+nav ol{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:1px}
+nav .grp{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:14px 10px 4px;font-weight:500}
+nav .grp:first-child{margin-top:0}
+nav a{display:block;color:var(--muted);text-decoration:none;padding:4px 10px;border-left:2px solid transparent;border-radius:0 6px 6px 0}
+nav a:hover,nav a:focus-visible{color:var(--ink);background:var(--accent-soft);outline:none}
+nav a.on{color:var(--accent);border-left-color:var(--accent);font-weight:500}
+@media (max-width:820px){nav{position:static;padding-top:24px;max-height:none}nav ol{flex-direction:row;flex-wrap:wrap;gap:4px}nav .grp{width:100%;margin:8px 0 2px}nav a{border-left:0;border:1px solid var(--line);border-radius:999px;padding:3px 10px}nav a.on{border-color:var(--accent)}}
+main{padding-top:40px;min-width:0}
+.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.lede{font-size:17px;color:var(--muted);max-width:62ch}
+.tbl{overflow-x:auto;margin:14px 0;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:8px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-weight:500;color:var(--muted);font-size:12.5px;letter-spacing:.03em;background:var(--bg)}
+tr:last-child td{border-bottom:0}
+td code{white-space:nowrap}
+td.k{white-space:nowrap}
+.note{border-left:3px solid var(--accent);background:var(--accent-soft);padding:10px 14px;border-radius:0 8px 8px 0;margin:16px 0;max-width:70ch}
+.note.warn{border-color:var(--warn);background:var(--warn-soft)}
+.note p{margin:4px 0}
+.pill{display:inline-block;font-size:11.5px;font-weight:500;padding:1px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted);vertical-align:middle;letter-spacing:.02em;white-space:nowrap}
+.pill.doc{color:var(--doc);border-color:var(--doc);background:var(--doc-soft)}
+.pill.ver{color:var(--ver);border-color:var(--ver);background:var(--ver-soft)}
+.pill.node{color:var(--node);border-color:var(--node);background:var(--node-soft)}
+.pill.lock{color:var(--lock);border-color:var(--lock);background:var(--lock-soft)}
+.pill.warn{color:var(--warn);border-color:var(--warn);background:var(--warn-soft)}
+.pill.ok{color:var(--ok);border-color:var(--ok);background:var(--ok-soft)}
+.verb{font-family:"IBM Plex Mono",monospace;font-weight:500;font-size:12.5px;padding:1px 7px;border-radius:4px;background:var(--code-bg)}
+.file{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin:18px 0}
+.file .fh{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px;margin-bottom:6px}
+.file .fh code{font-size:15px;font-weight:500;background:none;padding:0;color:var(--accent)}
+.file .fh .lines{font-size:12px;color:var(--muted)}
+.file .role{color:var(--muted);margin:0 0 8px;font-size:14.5px}
+.fn{border-top:1px dashed var(--line);padding:10px 0 4px;margin-top:8px}
+.fn .sig{font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:500;margin:0 0 4px}
+.fn .sig .ep{color:var(--accent)}
+.fn p{margin:4px 0;font-size:14px}
+.fn .who{font-size:12.5px;color:var(--muted)}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px;margin:14px 0}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.card h4{margin:0 0 6px;font-size:14.5px}
+.card p{margin:4px 0;font-size:14px}
+.big{font-size:15.5px;font-weight:500}
+footer{margin-top:56px;padding-top:16px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav aria-label="목차"><ol>
+<li class="grp">1. DB 스키마</li>
+<li><a href="#d0">표 5개 관계</a></li>
+<li><a href="#d1">sop_documents</a></li>
+<li><a href="#d2">sop_versions</a></li>
+<li><a href="#d3">flow_nodes</a></li>
+<li><a href="#d4">flow_edges</a></li>
+<li><a href="#d5">sop_edit_locks</a></li>
+<li><a href="#d6">인덱스</a></li>
+<li><a href="#d7">마이그레이션</a></li>
+<li class="grp">2. 백엔드 파일별</li>
+<li><a href="#f-app">app.py</a></li>
+<li><a href="#f-main">app/main.py</a></li>
+<li><a href="#f-config">app/config.py</a></li>
+<li><a href="#f-db">app/db.py</a></li>
+<li><a href="#f-deps">app/deps.py</a></li>
+<li><a href="#f-errors">app/errors.py</a></li>
+<li><a href="#f-schemas">app/schemas.py</a></li>
+<li><a href="#f-derive">app/derive.py</a></li>
+<li><a href="#f-refs">app/refs.py</a></li>
+<li><a href="#f-common">routers/common.py</a></li>
+<li><a href="#f-sops">routers/sops.py</a></li>
+<li><a href="#f-versions">routers/versions.py</a></li>
+<li><a href="#f-locks">routers/locks.py</a></li>
+<li><a href="#f-tools">tools/apply_schema.py</a></li>
+</ol></nav>
+<main>
+<div class="eyebrow">sop · sql/ · app/</div>
+<h1>SOP Studio 백엔드 레퍼런스</h1>
+<p class="lede">1부는 DB 스키마. 표 5개의 컬럼 하나하나를 "타입 · 뜻 · 누가 쓰나 · 누가 읽나" 로. 2부는 백엔드 파일 14개의 역할과 함수 하나하나. 이 저장소의 실제 코드만으로 씁니다.</p>
+
+<!-- ===================================================== 3 DB -->
+<h2 id="d0"><span class="part">DB</span>1. 표 5개는 어떻게 이어지나</h2>
+<pre>
+sop_documents (문서)  1 ────────── N  sop_versions (버전)  1 ────────── N  flow_nodes  (순서도 상자)
+   │  id  ◄────────────────────────── document_id                            └─ ref_document_id ──► sop_documents.id
+   │  current_version_id ──────────► id                                  1 ────────── N  flow_edges  (순서도 연결선)
+   │                                  content jsonb (편집기 JSON 원본, 복원용)
+   └── 1 ── 0..1  sop_edit_locks (편집 잠금)
+
+ON DELETE 규칙
+  문서 삭제 → 버전·잠금 CASCADE(같이 삭제) → 버전 삭제 → 노드·선 CASCADE
+  가리키던 버전/문서가 사라지면 current_version_id / ref_document_id 는 SET NULL(빈칸)
+</pre>
+<h4>설계 원칙 4가지. 스키마 파일 머리에 적힌 그대로</h4>
+<ol>
+<li><b>복원은 <code>sop_versions.content</code> 하나로 끝난다.</b> 편집기 JSON 이 통째로 들어 있어서, 나머지 컬럼과 표는 전부 검색·목록용 사본입니다.</li>
+<li><b><code>flow_nodes</code> / <code>flow_edges</code> 는 파생 사본.</b> 저장할 때 서버가 content 에서 뽑아 넣습니다. 편집기는 이 두 표를 읽지 않습니다.</li>
+<li><b>버전 행은 불변.</b> 저장할 때마다 새 행 + 새 노드 행. 옛 행은 절대 UPDATE 하지 않습니다.</li>
+<li><b>참조는 번호가 아니라 id 로.</b> 순서도의 "다른 SOP 상자" 는 <code>ref_document_id</code>(uuid) 가 진짜 연결입니다. 번호는 바뀌어도 id 는 영구라 참조가 안 끊깁니다.</li>
+</ol>
+<p>화살표의 <code>ON DELETE</code> 규칙은 두 가지입니다. <b>CASCADE</b> 는 "부모가 지워지면 자식도 같이" (문서 → 버전 → 노드·선, 문서 → 잠금). <b>SET NULL</b> 은 "가리키던 것이 사라지면 빈칸으로" (<code>current_version_id</code>, <code>ref_document_id</code>). 다만 이 앱은 문서를 실제로 DELETE 하지 않고 <code>status='retired'</code> 로만 바꾸므로, CASCADE 는 안전장치이지 일상 경로가 아닙니다.</p>
+
+<h3 id="d1"><span class="pill doc">sop_documents</span> 문서. SOP 한 건 = 한 행. 개정해도 번호가 바뀌어도 id 는 고정</h3>
+<div class="tbl"><table>
+<thead><tr><th>컬럼</th><th>타입</th><th>뜻</th><th>누가 쓰나</th><th>누가 읽나</th></tr></thead>
+<tbody>
+<tr><td class="k"><code>id</code></td><td>uuid PK</td><td>영구 신분증. <code>gen_random_uuid()</code> 로 DB 가 자동 생성. 화면에 안 보임</td><td>INSERT 때 자동</td><td>모든 곳. 다른 표가 이걸로 가리킴</td></tr>
+<tr><td class="k"><code>sop_no</code></td><td>text UNIQUE</td><td>사람이 보는 번호 "SOP-ETCH-001". 트리 정렬 키. 바뀔 수 있음</td><td>POST 최초 1회, PATCH /number</td><td>목록, 번호로 열기, 참조 찾기</td></tr>
+<tr><td class="k"><code>name</code></td><td>text</td><td>SOP 이름</td><td>저장할 때마다 덮어씀</td><td>목록 (ILIKE 검색)</td></tr>
+<tr><td class="k"><code>area</code></td><td>text CHECK</td><td>적용 구역. <code>'' P E D T C</code> 여섯 값만 허용</td><td>저장할 때마다 덮어씀</td><td>목록 필터·정렬</td></tr>
+<tr><td class="k"><code>status</code></td><td>text CHECK</td><td><code>draft / review / approved / retired</code> 네 값만. 기본 draft</td><td>DELETE 가 retired 로, 폐기 문서에 저장하면 draft 로</td><td>목록 필터 (기본은 retired 제외)</td></tr>
+<tr><td class="k"><code>current_version_id</code></td><td>uuid FK → sop_versions</td><td>"최신이 어느 행인가" 포인터. NULL 이면 아직 버전 없음. 순환 참조라 ALTER TABLE 로 나중에 FK 추가</td><td>저장 끝에 새 버전 id 로</td><td>열기 (이걸 따라감), 목록 JOIN, 참조 찾기</td></tr>
+<tr><td class="k"><code>created_by</code></td><td>text</td><td>처음 만든 사람</td><td>POST 때만</td><td>없음</td></tr>
+<tr><td class="k"><code>created_at</code></td><td>timestamptz</td><td>만든 시각. <code>now()</code> 기본</td><td>자동</td><td>없음</td></tr>
+<tr><td class="k"><code>updated_at</code></td><td>timestamptz</td><td>마지막 저장·번호변경·폐기 시각</td><td>저장·PATCH·DELETE 때 <code>now()</code></td><td>목록</td></tr>
+</tbody></table></div>
+<div class="note"><p><b>이 표의 성격.</b> 값이 <b>덮어써집니다.</b> 항상 "지금" 값만 있습니다. 옛 이름이 궁금하면 옛 버전의 <code>content</code> 를 봐야 합니다.</p></div>
+
+<h3 id="d2"><span class="pill ver">sop_versions</span> 버전. 저장 1회 = 1행. 불변</h3>
+<div class="tbl"><table>
+<thead><tr><th>컬럼</th><th>타입</th><th>뜻</th><th>누가 쓰나</th><th>누가 읽나</th></tr></thead>
+<tbody>
+<tr><td class="k"><code>id</code></td><td>uuid PK</td><td>이 버전 행의 신분증. <code>sop_documents.current_version_id</code> 와 <code>flow_nodes.version_id</code> 가 이걸 가리킴</td><td>자동</td><td>열기, 노드 조회</td></tr>
+<tr><td class="k"><code>document_id</code></td><td>uuid FK → sop_documents CASCADE</td><td>어느 문서의 버전인가. 문서가 지워지면 같이 지워짐</td><td>INSERT</td><td>이력 목록, MAX 조회</td></tr>
+<tr><td class="k"><code>version_no</code></td><td>int</td><td>사람이 읽는 순번 1, 2, 3. <code>(document_id, version_no)</code> 가 UNIQUE</td><td>MAX + 1</td><td>이력, 옛 버전 열기, diff, 충돌 검사</td></tr>
+<tr><td class="k"><code>format</code></td><td>text</td><td>편집기 JSON 의 format. 항상 <code>"sop-editor-mock"</code></td><td>meta.format</td><td>없음</td></tr>
+<tr><td class="k"><code>format_version</code></td><td>int</td><td>편집기 JSON 의 version. 나중에 형식이 바뀌면 마이그레이션 판단용</td><td>meta.format_version</td><td>없음</td></tr>
+<tr><td class="k"><code>content</code></td><td><b>jsonb</b></td><td><b>편집기 JSON 원본 통째.</b> 이미지 base64 까지. 문서당 수백 KB. 복원은 이것 하나로 끝</td><td><code>Jsonb(doc)</code></td><td>열기, 옛 버전 열기. <b>목록·이력은 절대 안 읽음</b></td></tr>
+<tr><td class="k"><code>revision</code></td><td>text</td><td>편집기 "개정 번호" 입력값 (예 1.0)</td><td>meta.revision</td><td>목록 (현재 버전만), 이력</td></tr>
+<tr><td class="k"><code>owner</code></td><td>text</td><td>작성자 / 부서</td><td>meta.owner</td><td>목록 (현재 버전만)</td></tr>
+<tr><td class="k"><code>tags</code></td><td>text[]</td><td>검색 태그 배열</td><td>meta.tags</td><td><b>아무도 안 읽음</b></td></tr>
+<tr><td class="k"><code>change_note</code></td><td>text</td><td>무엇을 바꿨는지 메모</td><td>요청 본문 change_note</td><td>이력</td></tr>
+<tr><td class="k"><code>saved_by</code></td><td>text</td><td>저장한 사람</td><td>본문 saved_by 또는 X-User</td><td>이력</td></tr>
+<tr><td class="k"><code>saved_at</code></td><td>timestamptz</td><td>저장 시각</td><td>자동 <code>now()</code></td><td>이력, 저장 응답</td></tr>
+</tbody></table></div>
+<div class="note"><p><b>이 표의 성격.</b> 행이 <b>쌓입니다.</b> 저장할 때마다 새 행이 추가되고 옛 행은 그대로 남습니다. v1 의 revision "A" 는 v2 를 저장해도 v1 행에 그대로 있습니다.</p></div>
+
+<h3 id="d3"><span class="pill node">flow_nodes</span> 순서도 상자. 버전에 매달림. 파생 사본</h3>
+<p><code>content.blocks[type=flowchart].project.nodes[]</code> 를 한 상자 = 한 행으로 풀어낸 것입니다. 한 문서에 순서도 페이지가 여러 장일 수 있어 <code>instance_id</code> 로 구분합니다.</p>
+<div class="tbl"><table>
+<thead><tr><th>컬럼</th><th>타입</th><th>뜻</th><th>JSON 출처</th></tr></thead>
+<tbody>
+<tr><td class="k"><code>id</code></td><td>uuid PK</td><td>행 신분증</td><td>자동</td></tr>
+<tr><td class="k"><code>version_id</code></td><td>uuid FK → sop_versions CASCADE</td><td>어느 버전의 상자인가</td><td>방금 만든 버전 id</td></tr>
+<tr><td class="k"><code>instance_id</code></td><td>text</td><td>순서도 페이지 id "flow_xxx". 없으면 <code>flow_{순번}</code></td><td><code>block.instanceId</code></td></tr>
+<tr><td class="k"><code>node_key</code></td><td>text</td><td>상자 키 "seq_3", "decision_1". <code>(version_id, instance_id, node_key)</code> UNIQUE</td><td><code>node.node</code></td></tr>
+<tr><td class="k"><code>node_type</code></td><td>text CHECK</td><td><code>start / seq / decision / sop / end</code> 다섯 값만. <code>derive.py</code> 의 <code>NODE_TYPES</code> 와 같아야 함</td><td><code>node.node_type</code></td></tr>
+<tr><td class="k"><code>name</code></td><td>text</td><td>start / end 표시 이름</td><td><code>node.name</code></td></tr>
+<tr><td class="k"><code>role_owner</code></td><td>text</td><td>seq 상자의 담당</td><td><code>node.role_owner</code></td></tr>
+<tr><td class="k"><code>action</code></td><td>text</td><td>seq 의 Action / decision 의 질문</td><td><code>node.action</code></td></tr>
+<tr><td class="k"><code>description</code></td><td>text</td><td>설명</td><td><code>node.description</code></td></tr>
+<tr><td class="k"><code>systems</code></td><td>jsonb</td><td>seq 가 쓰는 시스템 <code>[{"name":"MES","menus":[…]}]</code></td><td><code>node.systems</code> (목록 아니면 [] + 경고)</td></tr>
+<tr><td class="k"><code>manual</code></td><td>jsonb</td><td>수동 작업 목록</td><td><code>node.manual</code></td></tr>
+<tr><td class="k"><code>ref_sop_no</code></td><td>text</td><td>sop 상자: 참조 SOP 번호. <b>표시용 글자.</b> 저장 시 최신 번호로 덮어씀</td><td><code>node.sop_id</code></td></tr>
+<tr><td class="k"><code>ref_sop_name</code></td><td>text</td><td>sop 상자: 참조 SOP 이름. 표시용</td><td><code>node.sop_name</code></td></tr>
+<tr><td class="k"><code>ref_document_id</code></td><td>uuid FK → sop_documents SET NULL</td><td>sop 상자: 참조 SOP 의 문서 id. <b>진짜 연결.</b> NULL 이면 "번호만 적혀 있고 미연결(미작성)". 대상 문서가 지워지면 자동 NULL</td><td><code>node.ref_document_id</code> (sop 상자만, UUID 형식만)</td></tr>
+<tr><td class="k"><code>position</code></td><td>jsonb</td><td><code>{"x":120,"y":90}</code> 1920×1080 캔버스 좌표. 숫자 아니면 0 + 경고</td><td><code>node.x</code>, <code>node.y</code></td></tr>
+<tr><td class="k"><code>font_size</code></td><td>int</td><td>글자 크기. int4 범위 밖이면 NULL</td><td><code>node.font_size</code></td></tr>
+</tbody></table></div>
+<p><b>누가 읽나.</b> 두 버전 비교(<code>diff_versions</code>)와 "이 문서를 참조하는 문서" 찾기(<code>find_referenced_by</code>) 두 곳뿐입니다. 편집기는 이 표를 읽지 않고 <code>content</code> 를 씁니다.</p>
+
+<h3 id="d4"><span class="pill node">flow_edges</span> 순서도 연결선. 버전에 매달림. 파생 사본</h3>
+<div class="tbl"><table>
+<thead><tr><th>컬럼</th><th>타입</th><th>뜻</th><th>JSON 출처</th></tr></thead>
+<tbody>
+<tr><td class="k"><code>id</code></td><td>uuid PK</td><td>행 신분증</td><td>자동</td></tr>
+<tr><td class="k"><code>version_id</code></td><td>uuid FK CASCADE</td><td>어느 버전의 선인가</td><td>방금 만든 버전 id</td></tr>
+<tr><td class="k"><code>instance_id</code></td><td>text</td><td>순서도 페이지 id</td><td><code>block.instanceId</code></td></tr>
+<tr><td class="k"><code>edge_key</code></td><td>text</td><td>선 키 "edge_5". <code>(version_id, instance_id, edge_key)</code> UNIQUE</td><td><code>edge.edge</code></td></tr>
+<tr><td class="k"><code>source_key</code> / <code>target_key</code></td><td>text</td><td>출발 / 도착 상자의 node_key</td><td><code>edge.source</code> / <code>edge.target</code></td></tr>
+<tr><td class="k"><code>source_port</code> / <code>target_port</code></td><td>text</td><td>상자의 어느 면에서 나가고 들어오나 top/right/bottom/left</td><td><code>edge.sourcePort</code> / <code>targetPort</code></td></tr>
+<tr><td class="k"><code>condition</code></td><td>text</td><td>decision 분기 조건 Yes / No / 이상</td><td><code>edge.condition</code></td></tr>
+<tr><td class="k"><code>line_type</code></td><td>text</td><td>orthogonal(직각) / straight. 비면 orthogonal</td><td><code>edge.line_type</code></td></tr>
+<tr><td class="k"><code>route</code></td><td>jsonb</td><td>꺾은 선 조절점</td><td><code>edge.route</code> (dict 아니면 {})</td></tr>
+</tbody></table></div>
+<div class="note warn"><p><b>누가 읽나. 아무도 안 읽습니다.</b> 저장 때 쓰기만 하고 읽는 코드가 없습니다. 인덱스 2개도 따라서 안 쓰입니다. 앞으로 "연결선 검색" 이 생기면 그때 값이 있습니다.</p></div>
+
+<h3 id="d5"><span class="pill lock">sop_edit_locks</span> 편집 잠금. 한 번에 한 명만</h3>
+<div class="tbl"><table>
+<thead><tr><th>컬럼</th><th>타입</th><th>뜻</th></tr></thead>
+<tbody>
+<tr><td class="k"><code>document_id</code></td><td>uuid PK FK CASCADE</td><td>어느 문서의 잠금인가. PK 라서 <b>문서당 잠금 행은 최대 1개</b></td></tr>
+<tr><td class="k"><code>locked_by</code></td><td>text</td><td>누가 잡았나</td></tr>
+<tr><td class="k"><code>locked_at</code></td><td>timestamptz</td><td>잡은 시각</td></tr>
+<tr><td class="k"><code>expires_at</code></td><td>timestamptz</td><td>끝나는 시각. 지금 + ttl_sec(기본 120초). 하트비트로 계속 연장. <b>지나면 자동으로 "없는 것" 취급</b> (행은 남지만 <code>expires_at > now()</code> 조건에 안 걸림)</td></tr>
+</tbody></table></div>
+<p>브라우저를 그냥 닫아 버려도 2분 뒤 저절로 풀립니다. 행을 지우는 게 아니라 만료 시각을 비교하는 방식이라, 청소 작업이 따로 필요 없습니다.</p>
+
+<h3 id="d6">1.6 인덱스 15개. 쓰이는 것과 안 쓰이는 것</h3>
+<p>인덱스는 <code>WHERE</code> 나 <code>ORDER BY</code> 에 그 컬럼이 나올 때만 일합니다. SELECT 목록에만 있는 컬럼은 인덱스가 있어도 안 쓰입니다.</p>
+<div class="tbl"><table>
+<thead><tr><th>인덱스</th><th>컬럼</th><th>쓰는 쿼리</th><th></th></tr></thead>
+<tbody>
+<tr><td><code>ix_documents_area_no</code></td><td>documents (area, sop_no)</td><td>목록의 <code>ORDER BY d.area, d.sop_no</code>, area 필터</td><td><span class="pill ok">사용</span></td></tr>
+<tr><td><code>ix_documents_status</code></td><td>documents (status)</td><td>목록의 status 조건</td><td><span class="pill ok">사용</span></td></tr>
+<tr><td><code>ix_documents_name_trgm</code></td><td>documents name (gin, pg_trgm)</td><td>목록의 <code>d.name ILIKE %q%</code></td><td><span class="pill ok">사용</span></td></tr>
+<tr><td><code>ix_versions_doc</code></td><td>versions (document_id, version_no DESC)</td><td>이력 목록, MAX(version_no), 옛 버전 열기</td><td><span class="pill ok">사용</span></td></tr>
+<tr><td><code>ix_versions_content</code></td><td>versions content (gin)</td><td>content 를 WHERE 에 쓰는 쿼리 없음</td><td><span class="pill warn">미사용</span></td></tr>
+<tr><td><code>ix_flow_nodes_version</code></td><td>nodes (version_id)</td><td>diff 의 노드 읽기, 참조 찾기 JOIN</td><td><span class="pill ok">사용</span></td></tr>
+<tr><td><code>ix_flow_nodes_type</code></td><td>nodes (node_type)</td><td>없음</td><td><span class="pill warn">미사용</span></td></tr>
+<tr><td><code>ix_flow_nodes_role</code></td><td>nodes (role_owner)</td><td>없음</td><td><span class="pill warn">미사용</span></td></tr>
+<tr><td><code>ix_flow_nodes_ref</code></td><td>nodes (ref_sop_no) 부분</td><td>참조 찾기의 <code>ref_sop_no = %s</code></td><td><span class="pill ok">사용</span></td></tr>
+<tr><td><code>ix_flow_nodes_ref_doc</code></td><td>nodes (ref_document_id) 부분</td><td>참조 찾기의 <code>ref_document_id = %s</code></td><td><span class="pill ok">사용</span></td></tr>
+<tr><td><code>ix_flow_nodes_action_trgm</code></td><td>nodes action (gin)</td><td>없음</td><td><span class="pill warn">미사용</span></td></tr>
+<tr><td><code>ix_flow_nodes_systems</code></td><td>nodes systems (gin)</td><td>없음</td><td><span class="pill warn">미사용</span></td></tr>
+<tr><td><code>ix_flow_edges_version</code></td><td>edges (version_id)</td><td>flow_edges 를 읽는 쿼리 자체가 없음</td><td><span class="pill warn">미사용</span></td></tr>
+<tr><td><code>ix_flow_edges_source</code></td><td>edges (version_id, source_key)</td><td>없음</td><td><span class="pill warn">미사용</span></td></tr>
+<tr><td><code>ix_edit_locks_expires</code></td><td>locks (expires_at)</td><td>PK 로 한 행만 찾은 뒤 비교하므로 실질 효과 없음</td><td><span class="pill">거의 없음</span></td></tr>
+</tbody></table></div>
+<p>미사용 인덱스는 저장할 때마다 갱신 비용만 듭니다. "나중에 검색 기능이 생길 때" 를 위해 남겨 둔 것들이며, 지울지는 선택입니다.</p>
+
+<h3 id="d7">1.7 스키마 적용과 마이그레이션</h3>
+<p><code>python -m app.tools.apply_schema</code> 하나로 두 상황을 처리합니다.</p>
+<ul>
+<li><b>빈 DB</b> (표가 없음) → <code>sql/sop_schema.sql</code> 전체 실행. 새 설치.</li>
+<li><b>표가 이미 있음</b> → <code>sql/migrations/*.sql</code> 을 이름순(001, 002…)으로 전부 실행. 각 파일은 <code>IF NOT EXISTS</code> / <code>IF EXISTS</code> 로 몇 번 실행해도 안전(멱등).</li>
+</ul>
+<div class="tbl"><table>
+<thead><tr><th>파일</th><th>하는 일</th></tr></thead>
+<tbody>
+<tr><td><code>001_ref_document_id.sql</code></td><td><code>flow_nodes</code> 에 <code>ref_document_id</code> 컬럼 + 부분 인덱스 추가. 참조를 번호에서 id 로 바꾼 개편</td></tr>
+<tr><td><code>002_drop_sop_drafts.sql</code></td><td>한 번도 안 쓴 <code>sop_drafts</code> 표 삭제. "이 기기에 임시 저장" 은 브라우저 localStorage 만 썼음</td></tr>
+</tbody></table></div>
+<p>pg_trgm 확장이 없거나 만들 권한이 없는 DB 에서는 그 확장을 쓰는 줄만 빼고 실행합니다. 이름 검색은 되고 속도만 다릅니다.</p>
+
+<!-- ===================================================== 4 파일별 -->
+<h2 id="f-app"><span class="part">파일별</span>2. 파일 하나하나, 함수 하나하나</h2>
+<p>각 파일의 함수를 "무엇을 받아 무엇을 돌려주나, 누가 부르나" 로 적습니다. <span class="ep">파란 이름</span>은 HTTP 창구(엔드포인트), 앞에 <code>_</code> 가 붙은 것은 그 파일 안에서만 쓰는 도우미입니다.</p>
+
+<div class="file" id="f-app-card">
+<div class="fh"><code>app.py</code><span class="lines">50줄 · 프로젝트 루트</span></div>
+<p class="role">전원 스위치. <code>python app.py</code> 로 서버를 켭니다. Dockerfile 의 ENTRYPOINT 가 이 파일을 부릅니다. 폴더 <code>app/</code> 과 이름이 같지만 파이썬은 폴더를 먼저 찾으므로 문제없습니다.</p>
+<div class="fn"><p class="sig">main() → None</p><p>환경변수 <code>PORT</code>(기본 8000)를 읽고 <code>uvicorn.run("app.main:app", host="0.0.0.0", …)</code> 을 실행합니다. 윈도우면 asyncio 정책을 Selector 로 바꿉니다(psycopg 호환). <code>proxy_headers=True</code> 로 앞단 프록시의 X-Forwarded 헤더를 믿습니다.</p><p class="who">부르는 곳: <code>if __name__ == "__main__"</code>. 즉 직접 실행할 때만.</p></div>
+</div>
+
+<div class="file" id="f-main">
+<div class="fh"><code>app/main.py</code><span class="lines">186줄</span></div>
+<p class="role">식당 문. FastAPI 앱을 만들고 부품을 조립합니다. 순서: 설정 읽기 → 앱 생성(lifespan) → 오류처리기 → 미들웨어 → 라우터 등록 → 헬스체크 → 편집기 HTML 서빙.</p>
+<div class="fn"><p class="sig">lifespan(app)</p><p>앱이 켜질 때 <code>db.open_pool()</code> 로 DB 연결 풀을 열고, 꺼질 때 <code>db.close_pool()</code> 로 닫습니다. <code>yield</code> 앞이 시작, 뒤가 종료.</p><p class="who">부르는 곳: FastAPI 가 자동으로.</p></div>
+<div class="fn"><p class="sig">log_and_limit(request, call_next)  <span class="pill">미들웨어</span></p><p>모든 요청이 거치는 문. Content-Length 가 20MB 를 넘으면 본문을 읽지도 않고 413. 처리가 끝나면 "메서드 경로 상태코드 걸린시간" 로그 한 줄. CORS 미들웨어보다 먼저 등록해야 413 응답에도 CORS 헤더가 붙습니다.</p></div>
+<div class="fn"><p class="sig"><span class="ep">liveness()</span>  GET /health</p><p>항상 <code>{"ok": true}</code>. DB 를 보지 않습니다. 컨테이너 플랫폼이 몇 초마다 두드리는 용도라, DB 가 잠깐 흔들려도 서버를 죽이지 않게.</p></div>
+<div class="fn"><p class="sig"><span class="ep">health(response)</span>  GET /api/health</p><p><code>db.ping()</code> 으로 <code>SELECT 1</code> 을 날려 봅니다. 성공이면 200 <code>{"ok":true,"db":"up"}</code>, 실패면 503 <code>{"ok":false,"db":"down"}</code>. 배포 후 제일 먼저 열어 보는 주소.</p></div>
+<div class="fn"><p class="sig">inject_api_base(html, root_path) → str</p><p>편집기 HTML 의 <code>&lt;head&gt;</code> 바로 뒤에 <code>&lt;meta name="api-base" content="{ROOT_PATH}"&gt;</code> 를 끼워 넣습니다. 서버가 <code>/sop</code> 같은 접두어 뒤에서 돌 때 프론트가 API 주소 앞에 그걸 붙이도록.</p><p class="who">부르는 곳: index().</p></div>
+<div class="fn"><p class="sig"><span class="ep">index()</span>  GET /</p><p><code>static/SOP_STUDIO.html</code> 을 읽어 위 meta 를 끼워 돌려줍니다. 파일이 없으면 404 <code>static_not_found</code>.</p></div>
+<p style="margin-top:10px;font-size:14px">라우터 3개는 전부 <code>prefix="/api"</code> 와 <code>dependencies=[Depends(current_user)]</code> 로 등록됩니다. 나중에 <code>current_user</code> 에서 401 을 던지면 API 전체가 한 번에 보호됩니다.</p>
+</div>
+
+<div class="file" id="f-config">
+<div class="fh"><code>app/config.py</code><span class="lines">149줄</span></div>
+<p class="role">환경변수를 읽어 <code>Settings</code> 상자에 담습니다. 코드에 DB 주소를 직접 적지 않아서 같은 코드를 개발 PC 와 회사 컨테이너에서 값만 바꿔 씁니다.</p>
+<div class="fn"><p class="sig">_env_int(name, default) → int</p><p>환경변수를 정수로. 비었거나 숫자가 아니면 기본값.</p></div>
+<div class="fn"><p class="sig">_env_prepare_threshold() → int | None</p><p><code>DB_PREPARE_THRESHOLD</code>. 빈 문자열이나 0 이면 None = prepared statement 를 안 만듦 (PgBouncer 트랜잭션 풀링 대응).</p></div>
+<div class="fn"><p class="sig">resolve_database_url() → str</p><p>DB 접속 주소를 정합니다. 우선순위: <code>DATABASE_URL</code> → <code>PGHOST/PGPORT/PGUSER/PGPASSWORD/PGDATABASE</code> 다섯 개로 조립 → 로컬 기본값 <code>postgresql://postgres:postgres@localhost:5432/sop</code>. 조립엔 psycopg 의 <code>make_conninfo</code> 를 써서 비밀번호에 특수문자가 있어도 안전.</p></div>
+<div class="fn"><p class="sig">mask_password(conninfo) → str</p><p>비밀번호만 <code>****</code> 로 가린 접속 문자열. 로그에 찍을 때.</p></div>
+<div class="fn"><p class="sig">class Settings</p><p>읽는 값: database_url, db_session_options(기본 <code>-c timezone=UTC</code>), db_connect_timeout(30), pool_min_size(2), pool_max_size(10), db_prepare_threshold, root_path, user_header(<code>X-User</code>), log_level(INFO), cors_origins, static_dir(<code>static</code>), static_index(<code>SOP_STUDIO.html</code>), max_content_bytes(20MB).</p></div>
+<div class="fn"><p class="sig">get_settings() → Settings</p><p>부를 때마다 새로 읽습니다. 테스트에서 환경변수를 바꿔 끼우기 쉽게.</p><p class="who">부르는 곳: main.py, deps.py, apply_schema.py.</p></div>
+</div>
+
+<div class="file" id="f-db">
+<div class="fh"><code>app/db.py</code><span class="lines">137줄</span></div>
+<p class="role">DB 연결 풀. 연결은 전화선 하나, 풀은 전화선을 미리 몇 개 열어 두고 빌려 쓰는 창구입니다. 파일 전체에 <code>pool</code> 변수 하나가 있고 <code>open_pool</code> 이 채웁니다.</p>
+<div class="fn"><p class="sig">open_pool(database_url, min_size, max_size, session_options, connect_timeout, prepare_threshold)</p><p>앱 시작 시 한 번. <code>AsyncConnectionPool</code> 을 만들고 <code>wait=True</code> 로 실제 접속이 될 때까지 기다립니다. 안 되면 원인을 한국어 로그로 남기고 실패. 연결 설정: <code>row_factory=dict_row</code>(결과를 <code>{"컬럼": 값}</code> 으로), <code>autocommit=True</code>(기본은 자동 저장, 묶을 때만 transaction()), <code>check=check_connection</code>(빌려줄 때마다 살아 있는지 확인), <code>max_lifetime=30분</code>.</p><p class="who">부르는 곳: main.lifespan.</p></div>
+<div class="fn"><p class="sig">close_pool()</p><p>앱 종료 시 한 번. 연결 전부 정리.</p></div>
+<div class="fn"><p class="sig">get_conn() → AsyncIterator[AsyncConnection]  <span class="pill">Depends</span></p><p>API 함수 하나가 실행되는 동안 연결 하나를 빌려 주고(<code>yield</code>), 끝나면 자동 반납. 모든 창구 함수가 <code>conn = Depends(get_conn)</code> 으로 받습니다.</p></div>
+<div class="fn"><p class="sig">ping() → bool</p><p><code>SELECT 1</code> 이 되면 True. <code>/api/health</code> 용.</p></div>
+</div>
+
+<div class="file" id="f-deps">
+<div class="fh"><code>app/deps.py</code><span class="lines">32줄</span></div>
+<p class="role">"지금 요청을 보낸 사용자가 누구인지" 하나만 다룹니다. 아직 로그인 기능이 없어 헤더 값을 그대로 믿습니다.</p>
+<div class="fn"><p class="sig">current_user(request) → str  <span class="pill">Depends</span></p><p>헤더 <code>X-User</code>(환경변수 <code>USER_HEADER</code> 로 변경 가능)에서 이름을 꺼냅니다. 브라우저가 한글을 <code>encodeURIComponent</code> 로 감싸 보내므로 <code>unquote</code> 로 되돌립니다. 비면 <code>"anonymous"</code>. main.py 가 모든 라우터에 걸어 두었고, 저장·잠금 함수는 <code>user = Depends(current_user)</code> 로 직접 받기도 합니다.</p></div>
+</div>
+
+<div class="file" id="f-errors">
+<div class="fh"><code>app/errors.py</code><span class="lines">76줄</span></div>
+<p class="role">어떤 오류든 <code>{ "error": { "code", "message", …추가정보 } }</code> 한 모양으로 내려보냅니다. 프론트가 오류를 한 가지 방식으로만 처리하면 되도록.</p>
+<div class="fn"><p class="sig">class ApiError(status_code, code, message, **extra)</p><p>API 함수 안에서 <code>raise ApiError(409, "version_conflict", "…", current_version_no=4)</code> 처럼 던지는 예외. 추가 정보는 키워드 인자로.</p></div>
+<div class="fn"><p class="sig">error_body(code, message, **extra) → dict</p><p>오류 JSON 본문을 만듭니다. main.py 의 413, 404 응답도 이걸 씁니다.</p></div>
+<div class="fn"><p class="sig">install_error_handlers(app)</p><p>처리기 4개를 등록합니다. <code>ApiError</code> → 그대로 JSON. <code>RequestValidationError</code>(pydantic 검사 실패) → 422 <code>validation_error</code>. Starlette <code>HTTPException</code>(없는 주소 404, 허용 안 된 메서드 405) → <code>http_error</code>. 그 밖의 <code>Exception</code> → 500 <code>internal_error</code>, 스택트레이스는 로그에만.</p><p class="who">부르는 곳: main.py 에서 한 번.</p></div>
+</div>
+
+<div class="file" id="f-schemas">
+<div class="fh"><code>app/schemas.py</code><span class="lines">198줄</span></div>
+<p class="role">API 가 주고받는 JSON 의 "모양" 정의. pydantic 모델이라 FastAPI 가 요청을 받으면 자동 검사하고 틀리면 422. 편집기 문서 <code>doc</code> 자체는 <code>dict</code> 로 받아 안을 정의하지 않습니다(프론트가 계속 진화하므로).</p>
+<div class="fn"><p class="sig">to_utc_z(value) → str · UtcDatetime</p><p>시각을 항상 UTC + 끝에 Z 로 (예 <code>2026-09-11T02:30:00Z</code>). DB 세션 시간대가 무엇이든 응답은 같은 모양. <code>UtcDatetime</code> 타입을 쓰면 자동 적용.</p></div>
+<div class="tbl" style="margin-top:10px"><table>
+<thead><tr><th>모델</th><th>쓰이는 곳</th><th>필드</th></tr></thead>
+<tbody>
+<tr><td><code>DocumentSummary</code></td><td>GET /sops 응답 한 줄</td><td>id, sop_no, name, area, status, version_no, revision, owner, updated_at. content 없음</td></tr>
+<tr><td><code>LockInfo</code></td><td>잠금 정보</td><td>locked_by, expires_at</td></tr>
+<tr><td><code>RefDoc</code></td><td>열기 응답의 ref_docs 한 건</td><td>id, sop_no, name, area, status</td></tr>
+<tr><td><code>DocumentOpen</code></td><td>열기 응답</td><td>id, sop_no, version_no, version_id, lock, <b>content</b>, ref_docs</td></tr>
+<tr><td><code>SaveRequest</code></td><td>POST / PUT 요청 본문</td><td><b>doc</b>, base_version_no, change_note, saved_by</td></tr>
+<tr><td><code>RefsSummary</code></td><td>저장 응답 안</td><td>linked, pending, empty (SOP 상자 처리 개수)</td></tr>
+<tr><td><code>SaveResponse</code></td><td>저장 응답 201</td><td>id, sop_no, version_id, version_no, saved_at, warnings[], warning, refs</td></tr>
+<tr><td><code>RenameRequest</code> / <code>RenameResponse</code></td><td>PATCH /number</td><td>sop_no, user / id, sop_no, old_sop_no, referenced_by</td></tr>
+<tr><td><code>ReferencedBy</code></td><td>GET /referenced-by 한 줄</td><td>id, sop_no, name, area, status, version_no</td></tr>
+<tr><td><code>VersionSummary</code></td><td>GET /versions 한 줄</td><td>version_no, revision, saved_by, saved_at, change_note</td></tr>
+<tr><td><code>LockRequest</code> / <code>UnlockRequest</code></td><td>POST / DELETE lock</td><td>user, ttl_sec(10~3600, 기본 120) / user</td></tr>
+<tr><td><code>StatusResponse</code></td><td>폐기·잠금 해제 응답</td><td>id, status, referenced_by</td></tr>
+<tr><td><code>HealthResponse</code></td><td>/api/health</td><td>ok, db</td></tr>
+</tbody></table></div>
+</div>
+
+<div class="file" id="f-derive">
+<div class="fh"><code>app/derive.py</code><span class="lines">385줄</span></div>
+<p class="role">편집기 JSON(<code>doc</code>)에서 "DB 컬럼에 넣을 값" 만 골라내는 순수 함수 모음. DB 도 웹 프레임워크도 모릅니다. 프론트 JSON 의 키 이름은 이 파일에만 적혀 있습니다.</p>
+<h4>상수</h4>
+<p style="font-size:14px"><code>SOP_DOC_FORMAT = "sop-editor-mock"</code> · <code>VALID_AREAS = ("", "P", "E", "D", "T", "C")</code> · <code>NODE_TYPES = ("start","seq","decision","sop","end")</code> (DB CHECK 와 같아야 함) · <code>SOP_NO_PATTERN = ^[A-Za-z0-9._-]+$</code> · <code>INT4_MIN/MAX</code></p>
+<div class="fn"><p class="sig">@dataclass DocumentMeta</p><p>꺼낸 값 7개 + warnings 를 담는 상자. sop_no, name, area, revision, owner, tags, format, format_version, warnings.</p></div>
+<h4>작은 도우미 (이 파일 안에서만)</h4>
+<div class="fn"><p class="sig">_text(value) → str</p><p>어떤 값이든 앞뒤 공백 지운 문자열. None 이면 "".</p></div>
+<div class="fn"><p class="sig">_is_int(value) → bool</p><p>진짜 정수인가. True/False 는 제외.</p></div>
+<div class="fn"><p class="sig">_to_number(value)</p><p>좌표용. 숫자로 바꿀 수 있으면 숫자, 아니면 None. inf / nan 은 JSON 에 못 넣으므로 None.</p></div>
+<div class="fn"><p class="sig">_to_int_or_none(value)</p><p>font_size 용. 정수이고 int4 범위 안이면 정수, 아니면 None.</p></div>
+<div class="fn"><p class="sig">_dict_or_empty(value) / _list_or_empty(value)</p><p>dict/list 면 그대로, 아니면 빈 것. JSON 에 sop / studio / nodes 가 빠져 있어도 죽지 않게.</p></div>
+<div class="fn"><p class="sig">uuid_or_none(value) → UUID | None</p><p>UUID 형식 문자열이면 UUID, 아니면 None. refs.py 도 같이 씁니다.</p></div>
+<div class="fn"><p class="sig">_ref_document_id(node, instance_id, node_key, warnings)</p><p>sop 상자의 ref_document_id 를 꺼냄. 비면 None(경고 없음), 적혀 있는데 UUID 가 아니면 None + 경고.</p></div>
+<div class="fn"><p class="sig">_list_field(node, key, …) / _coordinate(node, key, …)</p><p>systems / manual 이 목록이 아니면 [] + 경고. x / y 가 숫자가 아니면 0 + 경고.</p></div>
+<h4>본 함수 4개</h4>
+<div class="fn"><p class="sig">validate_document(doc) → None</p><p>저장해도 되는 최소 형식인지 검사. 아니면 422 <code>invalid_document</code>. 검사 항목: format 이 "sop-editor-mock" 인가, version 이 정수인가, blocks 가 list 인가, sop.id 가 비어 있지 않고 허용 글자만인가.</p><p class="who">부르는 곳: sops.py create_document, save_document.</p></div>
+<div class="fn"><p class="sig">document_meta(doc) → DocumentMeta</p><p>sop.id, sop.name, studio.area, studio.revision, studio.owner, studio.tags, format, version 을 꺼냅니다. area 가 허용값 밖이면 '' + 경고. tags 는 빈 문자열 버림. version 이 정수 아니면 0.</p><p class="who">부르는 곳: sops.py 세 곳(create_document, save_document, _append_version). </p></div>
+<div class="fn"><p class="sig">_node_row(instance_id, node, index, warnings) / _edge_row(…)</p><p>노드 JSON 한 개 → flow_nodes 행 dict. 선 JSON 한 개 → flow_edges 행 dict. 크게 잘못됐으면(키 없음, 지원 안 하는 node_type, edge/source/target 빈 값) None + 경고. sop 상자가 아니면 ref_document_id 는 무조건 None.</p></div>
+<div class="fn"><p class="sig">iter_sop_nodes(doc) → generator of (instance_id, node_key, node)</p><p>모든 순서도 페이지에서 sop 상자만 골라 하나씩 돌려줍니다. 원본 dict 그대로라 받는 쪽에서 고치면 doc 에 반영됩니다.</p><p class="who">부르는 곳: refs.resolve_references(저장 직전에 상자 값을 고침), refs.load_ref_docs.</p></div>
+<div class="fn"><p class="sig">derive_flow_rows(doc) → (node_rows, edge_rows, warnings)</p><p>모든 순서도 페이지의 노드·선을 행 목록으로. 같은 페이지 안에서 같은 키가 두 번 나오면 첫 번째만(UNIQUE 제약 대비). 이상한 항목은 건너뛰고 경고. 원본은 어차피 content 에 통째로 있어 복원에 영향 없음.</p><p class="who">부르는 곳: sops._append_version.</p></div>
+</div>
+
+<div class="file" id="f-refs">
+<div class="fh"><code>app/refs.py</code><span class="lines">205줄</span></div>
+<p class="role">순서도의 "SOP 상자"(다른 SOP 를 가리키는 노드)가 실제 문서와 어떻게 이어지는지. 상자에는 <code>ref_document_id</code>(진짜 연결), <code>sop_id</code>(표시용 번호), <code>sop_name</code>(표시용 이름) 세 값이 있습니다.</p>
+<div class="fn"><p class="sig">_load_documents_by_ids(conn, ids) / _load_documents_by_sop_nos(conn, sop_nos)</p><p>id 목록 / 번호 목록으로 문서를 <b>한 번에</b> 찾아 dict 로. <code>WHERE id = ANY(%s)</code>. 목록이 비면 조회 안 함. 그래서 저장 1회당 DB 조회는 최대 2번.</p></div>
+<div class="fn"><p class="sig">_apply_document(node, found)</p><p>상자에 찾은 문서의 현재 id·번호·이름을 써 넣습니다.</p></div>
+<div class="fn"><p class="sig">resolve_references(conn, doc) → (RefsSummary, warnings)</p><p>저장 직전에 모든 SOP 상자를 4가지 규칙으로 정리합니다. doc 이 제자리에서 고쳐지고, 그 결과가 곧 content 로 저장됩니다.</p>
+<div class="tbl" style="margin:8px 0"><table>
+<thead><tr><th>규칙</th><th>상자 상태</th><th>서버가 하는 일</th><th>집계</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>id 있고 문서 존재</td><td>번호·이름을 그 문서의 현재 값으로 덮어씀. 폐기 문서면 경고</td><td>linked</td></tr>
+<tr><td>2</td><td>id 있는데 문서 없음 (또는 UUID 아님)</td><td>id 를 null 로, 글자는 유지. 경고</td><td>번호 있으면 pending, 없으면 empty</td></tr>
+<tr><td>3</td><td>id 없음 + 번호 있음</td><td>번호로 찾아 있으면 id 를 채움(승격). 없으면 그대로(미작성, 경고 없음)</td><td>linked / pending</td></tr>
+<tr><td>4</td><td>둘 다 없음</td><td>손대지 않고 개수만 세어 마지막에 경고 1건 합산</td><td>empty</td></tr>
+</tbody></table></div>
+<p class="who">부르는 곳: sops._append_version.</p></div>
+<div class="fn"><p class="sig">find_referenced_by(conn, doc_id, sop_no) → list[dict]</p><p>이 문서를 <b>현재 버전</b>에서 참조하는 다른 문서 목록. <code>flow_nodes</code> 를 <code>sop_documents.current_version_id</code> 로 JOIN 해서 옛 버전 상자는 안 봅니다. 조건: <code>ref_document_id = 이 문서</code> 이거나 <code>(id 없이 ref_sop_no = 이 번호)</code>. 자기 자신 제외.</p><p class="who">부르는 곳: list_referenced_by, count_referenced_by.</p></div>
+<div class="fn"><p class="sig">count_referenced_by(conn, doc_id, sop_no) → int</p><p>위 결과의 <code>len()</code>. DELETE 와 PATCH 응답의 숫자용.</p></div>
+<div class="fn"><p class="sig">count_number_only_references(conn, doc_id, sop_no) → int</p><p>"id 없이 번호 글자만으로" 이 번호를 가리키는 문서 수. 번호 변경 때 옛 번호로 세어, 새 번호를 따라오지 못하는 참조가 몇 건인지 로그에 남깁니다.</p></div>
+<div class="fn"><p class="sig">load_ref_docs(conn, content) → list[dict]</p><p>한 버전의 content 안 SOP 상자들이 가리키는 문서들의 지금 번호·이름·상태. 폐기된 것도 포함(편집기가 "폐기된 문서를 가리킴" 표시용). 열기 응답의 <code>ref_docs</code>.</p><p class="who">부르는 곳: sops.load_document_open, versions.open_version.</p></div>
+</div>
+
+<div class="file" id="f-common">
+<div class="fh"><code>app/routers/common.py</code><span class="lines">60줄</span></div>
+<p class="role">창구 3개가 똑같이 쓰는 도우미. 예전엔 파일마다 복사돼 있어서 404 문구 하나 바꾸려면 네 곳을 고쳐야 했습니다.</p>
+<div class="fn"><p class="sig">get_document_or_404(conn, doc_id) → dict</p><p><code>SELECT id, sop_no, status, current_version_id FROM sop_documents WHERE id = %s</code>. 없으면 404 <code>not_found</code>. 거의 모든 창구가 첫 줄에서 부릅니다.</p></div>
+<div class="fn"><p class="sig">find_active_lock(conn, doc_id) → LockInfo | None</p><p><code>expires_at > now()</code> 인 잠금만 찾습니다. 문서를 열 때 "지금 누가 편집 중인지".</p></div>
+<div class="fn"><p class="sig">content_with_current_sop_no(content, sop_no) → dict</p><p>content 의 <code>sop.id</code> 를 문서의 지금 번호로 맞춘 <b>사본</b>. PATCH /number 는 버전을 손대지 않으므로 옛 버전 content 엔 옛 번호가 남는데, 열기 응답만 보정해 편집기가 옛 번호를 채우지 않게. DB 는 그대로. 바깥 껍데기만 복사해서 blocks 큰 덩어리는 공유.</p></div>
+</div>
+
+<div class="file" id="f-sops">
+<div class="fh"><code>app/routers/sops.py</code><span class="lines">527줄</span></div>
+<p class="role">문서의 목록 / 열기 / 저장 / 번호 변경 / 폐기 / 참조 관계. 창구 9개(엔드포인트 8개 + 공용) 와 도우미 4개. 저장 주소가 번호가 아니라 id 인 이유: 번호는 사람이 바꿀 수 있어 번호로 저장하면 "새 문서인지 번호 바꾼 문서인지" 를 구분할 수 없기 때문.</p>
+<div class="fn"><p class="sig">REVIVED_WARNING</p><p>폐기됐던 문서에 저장하면 draft 로 되살리면서 warnings 에 넣는 문구.</p></div>
+<div class="fn"><p class="sig">escape_like(text) → str</p><p>ILIKE 검색어의 <code>% _ \</code> 를 글자 그대로 찾게 이스케이프. 사용자가 SOP_ETCH 라고 치면 SOP-ETCH 도 걸리는 걸 막음.</p></div>
+<div class="fn"><p class="sig">load_document_open(conn, doc_row) → DocumentOpen</p><p>문서 행을 받아 "열기" 응답 완성. current_version_id 가 NULL 이면 404. 그 id 로 <code>SELECT id, version_no, content FROM sop_versions WHERE id = %s</code>. 번호 보정, 잠금, ref_docs 붙여 돌려줌. id 로 열든 번호로 열든 그 뒤는 같아서 한 곳에.</p></div>
+<div class="fn"><p class="sig"><span class="ep">list_documents(q, area, status, conn)</span>  GET /sops</p><p>목록. WHERE 조각은 고정 문장만 리스트에 넣고 사용자 입력은 params 로 따로(SQL 인젝션 방지). status 기본 <code>!retired</code>(폐기 제외), <code>all</code> 이면 조건 없음. q 가 있으면 <code>sop_no ILIKE OR name ILIKE</code>. 현재 버전을 LEFT JOIN 해 version_no·revision·owner 를 붙임. <b>content 는 절대 읽지 않음.</b> <code>ORDER BY area, sop_no</code>.</p></div>
+<div class="fn"><p class="sig"><span class="ep">open_document_by_no(sop_no, conn)</span>  GET /sops/by-no/{sop_no}</p><p>번호로 문서 행을 찾아 load_document_open. 트리는 번호로 식별하므로 문서 클릭 때 프론트가 부름.</p></div>
+<div class="fn"><p class="sig"><span class="ep">open_document(doc_id, conn)</span>  GET /sops/{doc_id}</p><p>id 로 문서 행을 찾아 load_document_open. 저장 응답을 받은 뒤 다시 불러올 때.</p></div>
+<div class="fn"><p class="sig">_append_version(conn, doc_id, body, user, check_base_version) → SaveResponse</p><p><b>저장의 본체.</b> POST 와 PUT 이 똑같이 씀. 반드시 트랜잭션 안에서. 순서: (a) 문서 행 <code>FOR UPDATE</code> 잠금 (b) PUT 만: 번호 일치 검사 400, 최대 버전 조회 후 base_version_no 비교 409 (c) resolve_references 로 SOP 상자 정리 (d) derive_flow_rows 로 노드·선 행 (e) sop_versions INSERT → flow_nodes / flow_edges executemany → 폐기 문서였으면 draft 로 → sop_documents UPDATE(포인터·name·area·status). </p></div>
+<div class="fn"><p class="sig">_raise_if_sop_no_taken(conn, sop_no)</p><p>같은 번호 문서가 있으면 409 <code>sop_no_taken</code> + 그 문서의 id. 프론트는 "그 문서의 새 버전으로 저장할까요?" 라고 묻고 PUT 으로 다시 보냄.</p></div>
+<div class="fn"><p class="sig">_other_users_lock_warning(conn, doc_id, saved_by) → str | None</p><p>남의 유효한 잠금이 있으면 안내 문구. 저장 자체는 막지 않고 응답의 <code>warning</code> 에만.</p></div>
+<div class="fn"><p class="sig"><span class="ep">create_document(body, user, conn)</span>  POST /sops  → 201</p><p>새 문서 + 버전 1. validate_document → document_meta → 번호 중복 검사 → 트랜잭션 안에서 <code>INSERT INTO sop_documents … RETURNING id</code> → _append_version(check_base_version=False). 검사와 INSERT 사이에 다른 요청이 같은 번호를 먼저 만들면 <code>UniqueViolation</code> 을 잡아 409 로.</p></div>
+<div class="fn"><p class="sig"><span class="ep">save_document(doc_id, body, user, conn)</span>  PUT /sops/{doc_id}  → 201</p><p>기존 문서에 새 버전. validate_document → document_meta → 문서 존재·번호 일치 검사(빠른 실패) → 트랜잭션 안에서 _append_version(check_base_version=True). 폐기 문서였으면 draft 로 되살림.</p></div>
+<div class="fn"><p class="sig"><span class="ep">rename_document(doc_id, body, user, conn)</span>  PATCH /sops/{doc_id}/number</p><p>번호만 바꿈. 버전은 손대지 않음. 형식 검사 422 → 트랜잭션: 문서 행 FOR UPDATE → 남의 잠금 있으면 423 → 새 번호가 이미 쓰이면 409 → 옛 번호를 글자로만 참조하던 수를 세어 로그 → <code>UPDATE sop_documents SET sop_no = %s, updated_at = now()</code>. 같은 번호면 아무것도 안 바꾸고 200. id 로 연결된 다른 문서의 상자는 다음에 열 때 자동으로 새 번호를 봄.</p></div>
+<div class="fn"><p class="sig"><span class="ep">retire_document(doc_id, conn)</span>  DELETE /sops/{doc_id}</p><p>행을 지우지 않고 <code>status = 'retired'</code> 로. 이력 보존 원칙. 응답에 "이 문서를 참조하는 다른 문서 수" 를 넣어 프론트가 주의를 줄 수 있게. 이 문서에 다시 저장하면 draft 로 되살아남.</p></div>
+<div class="fn"><p class="sig"><span class="ep">list_referenced_by(doc_id, conn)</span>  GET /sops/{doc_id}/referenced-by</p><p>find_referenced_by 결과를 ReferencedBy 목록으로. 라이브러리 패널의 "이 문서를 참조하는 문서 N건".</p></div>
+</div>
+
+<div class="file" id="f-versions">
+<div class="fh"><code>app/routers/versions.py</code><span class="lines">200줄</span></div>
+<p class="role">저장할 때마다 쌓인 버전을 보여 줍니다. 읽기만 합니다.</p>
+<div class="fn"><p class="sig"><span class="ep">list_versions(doc_id, conn)</span>  GET /sops/{doc_id}/versions</p><p><code>SELECT version_no, revision, saved_by, saved_at, change_note … ORDER BY version_no DESC</code>. content 는 일부러 안 읽음.</p></div>
+<div class="fn"><p class="sig"><span class="ep">open_version(doc_id, version_no, conn)</span>  GET /sops/{doc_id}/versions/{n}</p><p>특정 번호의 content. 응답 모양은 최신 열기와 같음(DocumentOpen). 없으면 404 <code>version_not_found</code>. 번호 보정·잠금·ref_docs 도 붙임.</p></div>
+<div class="fn"><p class="sig">COMPARE_FIELDS</p><p>diff 에서 "내용이 바뀌었다" 고 볼 항목 9개. position 과 font_size 는 일부러 뺌. 상자를 옮기거나 글자 크기만 바꾼 건 절차가 바뀐 게 아니므로.</p></div>
+<div class="fn"><p class="sig">load_nodes_of_version(conn, doc_id, version_no) → dict</p><p>버전 번호로 버전 id 를 찾고, 그 버전의 flow_nodes 를 전부 읽어 <code>{(instance_id, node_key): 행}</code> 으로. 두 버전을 비교하려면 "같은 순서도의 같은 상자" 를 빠르게 찾아야 해서.</p></div>
+<div class="fn"><p class="sig">node_summary(node_row) → dict</p><p>노드 한 행을 짧은 요약으로. 추가/삭제 목록에 씀.</p></div>
+<div class="fn"><p class="sig"><span class="ep">diff_versions(doc_id, a, b, conn)</span>  GET /sops/{doc_id}/versions/{a}/diff/{b}</p><p>a → b 로 가면서 상자가 어떻게 달라졌나. b 에만 있으면 added, a 에만 있으면 removed, 양쪽 다 있으면 COMPARE_FIELDS 를 하나씩 비교해 달라진 것만 <code>{"from", "to"}</code> 로 changed. flow_nodes 표를 읽는 두 곳 중 하나.</p></div>
+</div>
+
+<div class="file" id="f-locks">
+<div class="fh"><code>app/routers/locks.py</code><span class="lines">133줄</span></div>
+<p class="role">같은 문서를 두 사람이 동시에 고치지 못하게. 편집 시작 때 잠그고(POST), 편집 중 주기적으로 같은 요청을 다시 보내 연장하며(하트비트), 끝나면 풉니다(DELETE). 만료 시각이 있어 브라우저를 닫아도 저절로 풀립니다.</p>
+<div class="fn"><p class="sig"><span class="ep">acquire_lock(doc_id, body, conn, user)</span>  POST /sops/{doc_id}/lock</p><p>규칙: 잠금 없음 / 내 잠금 / 남의 만료된 잠금 → 잡음(200). 남의 유효한 잠금 → 423 <code>locked</code>. 트랜잭션 안에서 <b>먼저 문서 행을 FOR UPDATE</b>(잠금 행이 아직 없는 문서에 두 사람이 동시에 오면 "없는 줄" 은 잠글 수 없어 둘 다 INSERT 로 가 중복 오류가 나므로, 항상 있는 문서 행에서 줄을 세움) → 잠금 행 FOR UPDATE → 없으면 INSERT, 있으면 UPDATE. 만료 시각은 <code>now() + make_interval(secs => %s)</code>.</p></div>
+<div class="fn"><p class="sig"><span class="ep">release_lock(doc_id, body, user_query, conn, header_user)</span>  DELETE /sops/{doc_id}/lock</p><p>누가 푸는지는 본문 user → <code>?user=</code> → X-User 순(DELETE 에 본문을 못 싣는 도구도 있어서). <code>DELETE … WHERE document_id = %s AND locked_by = %s</code> 라 남의 잠금은 지워지지 않음. 이미 풀려 있어도 200(여러 번 불러도 같은 결과).</p></div>
+</div>
+
+<div class="file" id="f-tools">
+<div class="fh"><code>app/tools/apply_schema.py</code><span class="lines">190줄 · 서버와 별개로 실행</span></div>
+<p class="role">DB 에 표를 만들거나 최신 모양으로 고치는 도구. 책장 조립 설명서. 배포 전에 한 번 <code>python -m app.tools.apply_schema</code>.</p>
+<div class="fn"><p class="sig">read_sql / strip_trgm / is_trgm_error</p><p>SQL 파일 읽기. pg_trgm 관련 줄만 빼기. 이 오류가 "pg_trgm 이 없어서" 인지 판단.</p></div>
+<div class="fn"><p class="sig">tables_exist(conn) → bool</p><p><code>to_regclass('sop_documents')</code> 로 우리 표가 있는지.</p></div>
+<div class="fn"><p class="sig">list_migration_files() → list[str]</p><p><code>sql/migrations/*.sql</code> 이름순.</p></div>
+<div class="fn"><p class="sig">run_sql_file(conn, path) → bool</p><p>파일 하나를 트랜잭션 하나로 실행. pg_trgm 때문에 실패하면 그 줄만 빼고 재시도. 뺐으면 True.</p></div>
+<div class="fn"><p class="sig">apply_schema(database_url, dry_run, log) → dict</p><p>표가 없으면 전체 스키마, 있으면 마이그레이션 전부. <code>--dry-run</code> 이면 보여주기만. 결과 <code>{"mode": "install"|"migrate", "files": […], "trgm_skipped": bool}</code>.</p></div>
+<div class="fn"><p class="sig">drop_and_reinstall(database_url, log)</p><p>테스트 전용. 표를 전부 DROP 하고 다시 설치. 명령줄에서는 일부러 제공하지 않음. (현재 tests/ 폴더가 없어 부르는 곳도 없음)</p></div>
+<div class="fn"><p class="sig">main() → int</p><p>명령줄 입구. <code>--url</code> 또는 config 의 database_url 로 apply_schema.</p></div>
+</div>
+
+
+<footer>기준: <code>sop</code> 저장소 main 브랜치, 2026-09. 줄 번호 대신 함수 이름으로 적었습니다. 같은 내용의 텍스트 판은 <code>docs/CODE_WALKTHROUGH.md</code>, <code>docs/DB_SCHEMA.md</code>, <code>docs/SQL_BASICS.md</code>, <code>docs/BACKEND_GUIDE.md</code>.</footer>
+</main>
+</div>
+<script>
+(function(){
+  const links=[...document.querySelectorAll('nav a')];
+  const secs=links.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);
+  const io=new IntersectionObserver(es=>{es.forEach(en=>{if(en.isIntersecting){links.forEach(a=>a.classList.toggle('on',a.getAttribute('href')==='#'+en.target.id));}})},{rootMargin:'-15% 0px -75% 0px'});
+  secs.forEach(s=>io.observe(s));
+})();
+</script>
+</body>
+</html>
