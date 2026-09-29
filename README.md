@@ -62,6 +62,7 @@ sop/
 |---|---|---|
 | `GET /health` | 프로세스가 살아 있음 (DB 안 봄) → 항상 200 | liveness |
 | `GET /api/health` | DB 까지 연결됨 → 200, DB 죽으면 503 | readiness |
+| `GET /ready` | `/api/health` 와 같음 (HCP 가 이 주소로 준비 확인) | readiness |
 
 ## 4. 데이터는 어디에 있나
 

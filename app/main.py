@@ -6,7 +6,7 @@ main.py — FastAPI 앱의 출발점.
   2. 요청마다 로그 한 줄을 남기고, 너무 큰 요청은 413으로 막는다 (middleware)
   3. 오류를 한 가지 JSON 모양으로 통일한다 (errors.py)
   4. 기능별 라우터(routers/*.py)를 /api 아래에 붙인다. 모든 API 는 current_user 를 거친다 (API_GUARD)
-  5. /health (DB 안 봄, 플랫폼 생존 확인용) 와 /api/health (DB 확인. DB 가 죽어 있으면 503) 를 둔다
+  5. /health (DB 안 봄, 플랫폼 생존 확인용) 와 /api/health·/ready (DB 확인. DB 가 죽어 있으면 503) 를 둔다
   6. 편집기 HTML 파일을 "/" 에서 보여 준다. 이때 <head> 바로 뒤에 <meta name="api-base" content="{ROOT_PATH}"> 를
      끼워 넣어, 서버가 "/sop" 같은 접두어 뒤에서 돌 때 프론트가 API 주소 앞에 그 접두어를 붙일 수 있게 한다.
 
@@ -132,12 +132,14 @@ async def liveness():
     return {"ok": True}
 
 
+@app.get("/ready", response_model=HealthResponse, include_in_schema=False)   # HCP 준비 확인(readiness) 용
 @app.get("/api/health", response_model=HealthResponse)
 async def health(response: Response):
     """
     서버와 DB가 살아 있는지 확인. 배포 후 제일 먼저 열어 보는 주소.
     둘 다 정상이면 200 {"ok": true, "db": "up"}, DB 만 죽어 있으면 503 {"ok": false, "db": "down"}.
     (상태 코드만 보는 모니터링 도구나 curl -f 도 DB 장애를 알아챌 수 있게 503 으로)
+    /ready 도 같은 함수입니다. HCP 가 배포 뒤 "앱 준비됐나?" 를 이 주소로 확인합니다 (없으면 404 로 준비 실패).
     """
     alive = await db.ping()
     if not alive:
